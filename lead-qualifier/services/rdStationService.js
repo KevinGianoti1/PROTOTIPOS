@@ -219,15 +219,18 @@ Data: ${new Date().toLocaleString('pt-BR')}
             `.trim();
 
             const notePayload = {
-                deal_note: {
-                    content: noteContent
+                activity: {
+                    deal_id: dealId,
+                    user_id: '63d3f64aa6528000185e5ddd', // BEATRIZ
+                    type: 'note',
+                    text: noteContent
                 }
             };
 
-            logger.info('Criando anotação no deal', { dealId });
+            logger.info('Criando anotação no deal (via activities)', { dealId });
 
             await axios.post(
-                this.addTokenToUrl(`${this.apiUrl}/deals/${dealId}/notes`),
+                this.addTokenToUrl(`${this.apiUrl}/activities`),
                 notePayload,
                 { headers: this.getHeaders(), timeout: 15000 }
             );

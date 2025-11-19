@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  lead-qualifier:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - RD_STATION_API_TOKEN=${RD_STATION_API_TOKEN}
+      - PORT=3000
+    restart: always

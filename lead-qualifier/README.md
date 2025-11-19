@@ -164,19 +164,6 @@ Use CNPJs de empresas reais para testar. Exemplos de CNAEs que **PASSAM** na val
 Se não configurar o token do RD Station, o sistema funciona em **modo teste**:
 - ✅ Consulta CNPJ normalmente
 - ✅ Valida CNAE normalmente
-- ⚠️ Não cria deals no RD Station (apenas simula)
-
-## 🔐 Segurança
-
-- Nunca commite o arquivo `.env` (já está no `.gitignore`)
-- Mantenha seu token do RD Station seguro
-- Use HTTPS em produção
-
-## 🚀 Próximos Passos
-
-1. **Configurar RD Station:**
-   - Obter token de API
-   - Configurar IDs de pipeline/etapas
    - Configurar IDs de fontes (Instagram/Site)
 
 2. **Integrar Formulários:**
