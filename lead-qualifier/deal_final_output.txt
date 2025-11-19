@@ -1,0 +1,179 @@
+﻿­ƒöì Buscando informa├º├Áes da oportunidade...
+
+Ô£à DADOS DA OPORTUNIDADE:
+
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+­ƒôè INFORMA├ç├òES B├üSICAS:
+Nome: Instagram - ABRAMAX ABRASIVOS LTDA - 08.054.886/0001-68
+ID: 691e27a1477d7b0023e1ff2e
+
+­ƒÄ» FUNIL E ETAPA:
+Pipeline ID: undefined
+Stage ID: undefined
+
+­ƒôì FONTE:
+Source ID: 63d81a9a732aa3001738fd73
+Source Nome: Redes Sociais
+
+­ƒôó CAMPANHA:
+Campaign ID: 64b82d4019f6fc001c8c89bb
+Campaign Nome: Tr├ífego Pago
+
+­ƒæñ USU├üRIO RESPONS├üVEL:
+User ID: 63d3f64aa6528000185e5ddd
+User Nome: BEATRIZ 
+
+­ƒÅó ORGANIZA├ç├âO:
+Org ID: 67dd6b5105c92c001f18d23c
+Org Nome:  Alexandre Lessa
+
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+­ƒôï OBJETO COMPLETO (JSON):
+
+{
+  "_id": "691e27a1477d7b0023e1ff2e",
+  "id": "691e27a1477d7b0023e1ff2e",
+  "name": "Instagram - ABRAMAX ABRASIVOS LTDA - 08.054.886/0001-68",
+  "amount_montly": 0,
+  "amount_unique": 0,
+  "amount_total": 0,
+  "best_moment_to_touch": true,
+  "closed_at": null,
+  "created_at": "2025-11-19T17:25:05.359-03:00",
+  "updated_at": "2025-11-19T17:25:08.104-03:00",
+  "deal_lost_reason_id": null,
+  "deal_lost_note": null,
+  "prediction_date": null,
+  "win": null,
+  "rating": 1,
+  "hold": null,
+  "interactions": 1,
+  "last_note_content": "­ƒôè INFORMA├ç├òES DO CNPJ - Qualifica├º├úo Autom├ítica\n\n­ƒÅó DADOS DA EMPRESA:\nÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü\nÔÇó Raz├úo Social: ABRAMAX ABRASIVOS LTDA\nÔÇó Nome Fantasia: ABRAMAX ABRASIVOS\nÔÇó CNPJ: 08.054.886/0001-68\nÔÇó Porte: MICRO EMPRESA\nÔÇó Natureza Jur├¡dica: Sociedade Empres├íria Limitada\nÔÇó Capital Social: R$ 70.000\n\n­ƒôì ENDERE├çO:\nÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü\nundefined, S/N\nundefined - undefined/undefined\nCEP: undefined\n\n­ƒô× CONTATO:\nÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü\nÔÇó Telefone Lead: (11) 93333-3333\nÔÇó Email: N├úo informado\nÔÇó DDD: N├úo informado\n\n­ƒÅ¡ ATIVIDADE ECON├öMICA (CNAE):\nÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü\n­ƒôî CNAE Principal:\n   4789099 - Com├®rcio varejista de outros produtos n├úo especificados anteriormente\n\n­ƒôï CNAEs Secund├írios:\n   ÔÇó 4744001 - Com├®rcio varejista de ferragens e ferramentas\n   ÔÇó 6810202 - Aluguel de im├│veis pr├│prios\n\nÔ£à RESULTADO DA QUALIFICA├ç├âO:\nÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü\nStatus: Ô£à QUALIFICADO\nMotivo: CNAE principal (4789099) est├í no PCI: Com├®rcio varejista de outros produtos n├úo especificados anteriormente\nCNAE Match: 4789099 - Com├®rcio varejista de outros produtos n├úo especificados anteriormente\n\n­ƒôÑ ORIGEM DO LEAD:\nÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü\nFonte: Instagram\nData: 19/11/2025, 17:25:09\n\nÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöüÔöü\n­ƒñû Anota├º├úo gerada automaticamente pelo sistema de qualifica├º├úo de leads",
+  "deal_source_id": "63d81a9a732aa3001738fd73",
+  "campaign_id": "64b82d4019f6fc001c8c89bb",
+  "stop_time_limit": {},
+  "from_rdsm_integration": false,
+  "errors": {},
+  "c_cf_errors": {},
+  "user": {
+    "_id": "63d3f64aa6528000185e5ddd",
+    "id": "63d3f64aa6528000185e5ddd",
+    "name": "BEATRIZ "
+  },
+  "campaign": {
+    "_id": "64b82d4019f6fc001c8c89bb",
+    "id": "64b82d4019f6fc001c8c89bb",
+    "name": "Tr├ífego Pago"
+  },
+  "organization": {
+    "_id": "67dd6b5105c92c001f18d23c",
+    "id": "67dd6b5105c92c001f18d23c",
+    "name": " Alexandre Lessa",
+    "resume": "",
+    "url": "",
+    "organization_custom_fields": [
+      {
+        "_id": "67dd6b5105c92c001f18d23d",
+        "created_at": null,
+        "custom_field_id": "66eb1e719059bf001af8d2fd",
+        "updated_at": null,
+        "value": "19342527000122"
+      },
+      {
+        "_id": "67dd6b5105c92c001f18d242",
+        "created_at": null,
+        "custom_field_id": "67b8788bdcd2b400143d9f2f",
+        "updated_at": null,
+        "value": ""
+      }
+    ],
+    "visible": true,
+    "address": null,
+    "address_longitude": null,
+    "address_latitude": null,
+    "organization_segments": [
+      {
+        "_id": "63d3f66054410b000c862a8e",
+        "id": "63d3f66054410b000c862a8e",
+        "name": "DISTRIBUIDOR"
+      }
+    ]
+  },
+  "deal_source": {
+    "_id": "63d81a9a732aa3001738fd73",
+    "id": "63d81a9a732aa3001738fd73",
+    "name": "Redes Sociais"
+  },
+  "deal_pipeline": {
+    "id": "63d81825906fa10010e05051",
+    "name": "Funil de Clientes Novos"
+  },
+  "deal_stage": {
+    "_id": "6478a01a95b902000dc981ec",
+    "id": "6478a01a95b902000dc981ec",
+    "name": "Entrada Tr├ífego Pago",
+    "nickname": "ETP",
+    "deal_pipeline_id": "63d81825906fa10010e05051"
+  },
+  "deal_stage_histories": [
+    {
+      "_id": "691e27a1477d7b0023e1ff2f",
+      "id": "691e27a1477d7b0023e1ff2f",
+      "deal_stage_id": "6478a01a95b902000dc981ec",
+      "start_date": "2025-11-19T17:25:05.352-03:00",
+      "end_date": null
+    },
+    {
+      "_id": "691e27a1477d7b0023e1ff30",
+      "id": "691e27a1477d7b0023e1ff30",
+      "deal_stage_id": "6478a01a95b902000dc981ec",
+      "start_date": "2025-11-19T17:25:05.362-03:00",
+      "end_date": null
+    }
+  ],
+  "deal_custom_fields": [
+    {
+      "value": "true",
+      "created_at": null,
+      "updated_at": null,
+      "custom_field_id": "67a4c29d9207d10020ee88cb",
+      "custom_field": {
+        "_id": "67a4c29d9207d10020ee88cb",
+        "allow_new": false,
+        "created_at": "2025-02-06T11:09:33.371-03:00",
+        "display_rules": [
+          {
+            "_id": "67a4c29d9207d10020ee88cc",
+            "always": true,
+            "created_at": null,
+            "property": null,
+            "updated_at": null,
+            "value": null
+          }
+        ],
+        "for": "deal",
+        "input_format": null,
+        "input_mask": null,
+        "input_placeholder": null,
+        "instance_id": "63d3f648a6528000185e5ddc",
+        "label": "CNAE",
+        "max_length": null,
+        "min_length": null,
+        "opts": [
+          "true",
+          "false"
+        ],
+        "order": 7,
+        "required": false,
+        "slug": "cnae",
+        "type": "option",
+        "unique": false,
+        "updated_at": "2025-02-06T11:09:33.371-03:00",
+        "visible": true
+      }
+    }
+  ],
+  "deal_products": []
+}

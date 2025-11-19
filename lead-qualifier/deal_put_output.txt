@@ -1,0 +1,99 @@
+﻿­ƒöì Buscando informa├º├Áes da oportunidade...
+
+Ô£à DADOS DA OPORTUNIDADE:
+
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+­ƒôè INFORMA├ç├òES B├üSICAS:
+Nome: Debug Deal PUT 1763583460451
+ID: 691e25e42573d00019a8c548
+
+­ƒÄ» FUNIL E ETAPA:
+Pipeline ID: undefined
+Stage ID: undefined
+
+­ƒæñ USU├üRIO RESPONS├üVEL:
+User ID: 63d3f64aa6528000185e5ddd
+User Nome: BEATRIZ 
+
+­ƒÅó ORGANIZA├ç├âO:
+Org ID: 691e25e302a46c0017be531c
+Org Nome: Debug PUT Org 1763583458385
+
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+­ƒôï OBJETO COMPLETO (JSON):
+
+{
+  "_id": "691e25e42573d00019a8c548",
+  "id": "691e25e42573d00019a8c548",
+  "name": "Debug Deal PUT 1763583460451",
+  "amount_montly": 0,
+  "amount_unique": 0,
+  "amount_total": 0,
+  "best_moment_to_touch": true,
+  "closed_at": null,
+  "created_at": "2025-11-19T17:17:40.625-03:00",
+  "updated_at": "2025-11-19T17:17:41.343-03:00",
+  "deal_lost_reason_id": null,
+  "deal_lost_note": null,
+  "prediction_date": null,
+  "win": null,
+  "rating": 1,
+  "hold": null,
+  "interactions": 0,
+  "last_note_content": null,
+  "deal_source_id": null,
+  "campaign_id": null,
+  "stop_time_limit": {},
+  "from_rdsm_integration": false,
+  "errors": {},
+  "c_cf_errors": {},
+  "user": {
+    "_id": "63d3f64aa6528000185e5ddd",
+    "id": "63d3f64aa6528000185e5ddd",
+    "name": "BEATRIZ "
+  },
+  "organization": {
+    "_id": "691e25e302a46c0017be531c",
+    "id": "691e25e302a46c0017be531c",
+    "name": "Debug PUT Org 1763583458385",
+    "resume": null,
+    "url": null,
+    "organization_custom_fields": [],
+    "visible": true,
+    "address": null,
+    "address_longitude": null,
+    "address_latitude": null,
+    "organization_segments": []
+  },
+  "deal_pipeline": {
+    "id": "63d81825906fa10010e05051",
+    "name": "Funil de Clientes Novos"
+  },
+  "deal_stage": {
+    "_id": "6478a01a95b902000dc981ec",
+    "id": "6478a01a95b902000dc981ec",
+    "name": "Entrada Tr├ífego Pago",
+    "nickname": "ETP",
+    "deal_pipeline_id": "63d81825906fa10010e05051"
+  },
+  "deal_stage_histories": [
+    {
+      "_id": "691e25e42573d00019a8c549",
+      "id": "691e25e42573d00019a8c549",
+      "deal_stage_id": "6478a01a95b902000dc981ec",
+      "start_date": "2025-11-19T17:17:40.619-03:00",
+      "end_date": null
+    },
+    {
+      "_id": "691e25e42573d00019a8c54a",
+      "id": "691e25e42573d00019a8c54a",
+      "deal_stage_id": "6478a01a95b902000dc981ec",
+      "start_date": "2025-11-19T17:17:40.629-03:00",
+      "end_date": null
+    }
+  ],
+  "deal_custom_fields": [],
+  "deal_products": []
+}

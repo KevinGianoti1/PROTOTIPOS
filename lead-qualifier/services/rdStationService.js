@@ -45,6 +45,96 @@ class RDStationService {
     }
 
     /**
+     * Busca uma organização pelo nome (Razão Social)
+     * @param {string} name - Razão Social
+     * @returns {Promise<string|null>} - ID da organização ou null
+     */
+    async searchOrganization(name) {
+        try {
+            const response = await axios.get(
+                this.addTokenToUrl(`${this.apiUrl}/organizations`),
+                {
+                    params: { name },
+                    headers: this.getHeaders()
+                }
+            );
+
+            if (response.data && response.data.organizations && response.data.organizations.length > 0) {
+                // Filtra para encontrar correspondência EXATA de nome (case insensitive)
+                const exactMatch = response.data.organizations.find(
+                    org => org.name.trim().toLowerCase() === name.trim().toLowerCase()
+                );
+
+                if (exactMatch) {
+                    return exactMatch.id;
+                }
+            }
+            return null;
+        } catch (error) {
+            logger.error('Erro ao buscar organização', { error: error.message });
+            return null;
+        }
+    }
+
+    /**
+     * Cria uma nova organização
+     * @param {Object} empresa - Dados da empresa
+     * @returns {Promise<string>} - ID da organização criada
+     */
+    async createOrganization(empresa) {
+        try {
+            const payload = {
+                organization: {
+                    name: empresa.razaoSocial,
+                    resume: `CNPJ: ${empresa.cnpjFormatado}\nFantasia: ${empresa.nomeFantasia}`,
+                    address: `${empresa.logradouro}, ${empresa.numero} - ${empresa.bairro}`,
+                    email: empresa.email,
+                    phones: [empresa.ddd + empresa.telefone]
+                }
+            };
+
+            const response = await axios.post(
+                this.addTokenToUrl(`${this.apiUrl}/organizations`),
+                payload,
+                { headers: this.getHeaders() }
+            );
+
+            return response.data.id;
+        } catch (error) {
+            logger.error('Erro ao criar organização', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Cria um novo contato
+     * @param {Object} lead - Dados do lead
+     * @returns {Promise<string>} - ID do contato criado
+     */
+    async createContact(lead) {
+        try {
+            const payload = {
+                contact: {
+                    name: lead.nome,
+                    phones: [{ phone: lead.telefone }],
+                    emails: [{ email: lead.email || `${lead.nome.replace(/\s+/g, '.').toLowerCase()}@exemplo.com` }] // Email fictício se não houver
+                }
+            };
+
+            const response = await axios.post(
+                this.addTokenToUrl(`${this.apiUrl}/contacts`),
+                payload,
+                { headers: this.getHeaders() }
+            );
+
+            return response.data.id;
+        } catch (error) {
+            logger.error('Erro ao criar contato', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
      * Cria uma oportunidade (deal) no RD Station CRM
      * @param {Object} leadData - Dados do lead processado
      * @returns {Promise<Object>} - Resposta da API
@@ -62,6 +152,18 @@ class RDStationService {
         try {
             const { lead, empresa, validacao } = leadData;
 
+            // PASSO 0: Gerenciar Organização e Contato
+            let organizationId = await this.searchOrganization(empresa.razaoSocial);
+            if (!organizationId) {
+                logger.info('Organização não encontrada (ou nome diferente), criando nova...', { nome: empresa.razaoSocial });
+                organizationId = await this.createOrganization(empresa);
+            } else {
+                logger.info('Organização encontrada, vinculando...', { id: organizationId });
+            }
+
+            logger.info('Criando contato...', { nome: lead.nome });
+            const contactId = await this.createContact(lead);
+
             // Determina Source e Campaign baseado na origem
             let dealSourceId, campaignId;
             if (lead.origem === 'Instagram') {
@@ -72,26 +174,30 @@ class RDStationService {
                 campaignId = '68cd8a3eebdea4001c02960f'; // Google ADS
             }
 
-            // PASSO 1: Criar o deal com campos básicos
+            // PASSO 1: Criar o deal com campos básicos E VÍNCULOS (POST funciona para contatos)
             const dealPayload = {
                 deal: {
-                    name: `${lead.nome} - ${empresa.nomeFantasia} (${empresa.cnpjFormatado})`,
-                    deal_pipeline_id: '63d81825906fa10010e05051', // Funil de Clientes Novos
-                    deal_stage_id: '6478a01a95b902000dc981ec', // Entrada Tráfego Pago (ETP)
-                    user_id: '63d3f64aa6528000185e5ddd', // BEATRIZ
+                    name: `${lead.origem} - ${empresa.razaoSocial} - ${empresa.cnpjFormatado}`,
+                    deal_pipeline_id: '63d81825906fa10010e05051',
+                    deal_stage_id: '6478a01a95b902000dc981ec',
+                    user_id: '63d3f64aa6528000185e5ddd',
+                    organization_id: organizationId, // Vincula Organização
+                    deal_contacts: [
+                        { contact_id: contactId } // Vincula Contato
+                    ],
                     deal_custom_fields: [
                         {
-                            custom_field_id: '67a4c29d9207d10020ee88cb', // Campo CNAE
+                            custom_field_id: '67a4c29d9207d10020ee88cb',
                             value: validacao.qualificado ? 'true' : 'false'
                         }
                     ]
                 }
             };
 
-            logger.info('Criando deal no RD Station', {
+            logger.info('Criando deal no RD Station (Passo 1: Completo)', {
                 empresa: empresa.razaoSocial,
-                qualificado: validacao.qualificado,
-                origem: lead.origem
+                organizationId,
+                contactId
             });
 
             const createResponse = await axios.post(
@@ -103,32 +209,26 @@ class RDStationService {
             const dealId = createResponse.data.id;
             logger.info('Deal criado com sucesso', { dealId });
 
-            // PASSO 2: Atualizar o deal com Source e Campaign
+            // PASSO 2: Atualizar o deal com Fonte e Campanha (mantendo separado por segurança)
             if (dealSourceId || campaignId) {
                 const updatePayload = {
                     deal: {}
                 };
 
-                if (dealSourceId) {
-                    updatePayload.deal.deal_source_id = dealSourceId;
+                if (dealSourceId) updatePayload.deal.deal_source_id = dealSourceId;
+                if (campaignId) updatePayload.deal.campaign_id = campaignId;
+
+                logger.info('Atualizando deal com fonte e campanha', { dealId });
+                try {
+                    await axios.put(
+                        this.addTokenToUrl(`${this.apiUrl}/deals/${dealId}`),
+                        updatePayload,
+                        { headers: this.getHeaders(), timeout: 15000 }
+                    );
+                    logger.info('Deal atualizado com fonte e campanha');
+                } catch (err) {
+                    logger.error('Erro ao atualizar fonte/campanha', { error: err.message });
                 }
-                if (campaignId) {
-                    updatePayload.deal.campaign_id = campaignId;
-                }
-
-                logger.info('Atualizando deal com fonte e campanha', {
-                    dealId,
-                    source_id: dealSourceId,
-                    campaign_id: campaignId
-                });
-
-                await axios.put(
-                    this.addTokenToUrl(`${this.apiUrl}/deals/${dealId}`),
-                    updatePayload,
-                    { headers: this.getHeaders(), timeout: 15000 }
-                );
-
-                logger.info('Deal atualizado com fonte e campanha');
             }
 
             // PASSO 3: Criar anotação com informações do CNPJ

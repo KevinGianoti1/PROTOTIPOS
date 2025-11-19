@@ -7,7 +7,7 @@ const axios = require('axios');
 
 const API_URL = 'https://crm.rdstation.com/api/v1';
 const TOKEN = process.env.RD_STATION_API_TOKEN;
-const DEAL_ID = '691e16874787a7001d043f9b';
+const DEAL_ID = '691e27a1477d7b0023e1ff2e';
 
 async function buscarDeal() {
     try {
@@ -46,6 +46,19 @@ async function buscarDeal() {
             console.log('\n👤 USUÁRIO RESPONSÁVEL:');
             console.log(`User ID: ${deal.user._id || deal.user_id}`);
             console.log(`User Nome: ${deal.user.name || 'N/A'}`);
+        }
+
+        if (deal.organization) {
+            console.log('\n🏢 ORGANIZAÇÃO:');
+            console.log(`Org ID: ${deal.organization._id || deal.organization_id}`);
+            console.log(`Org Nome: ${deal.organization.name}`);
+        }
+
+        if (deal.deal_contacts) {
+            console.log('\n📞 CONTATOS:');
+            deal.deal_contacts.forEach(contact => {
+                console.log(`- Nome: ${contact.name} (ID: ${contact.id})`);
+            });
         }
 
         console.log('\n' + '═'.repeat(60));

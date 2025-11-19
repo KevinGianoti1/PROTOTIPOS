@@ -1,0 +1,123 @@
+﻿­ƒöì Buscando informa├º├Áes da oportunidade...
+
+Ô£à DADOS DA OPORTUNIDADE:
+
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+­ƒôè INFORMA├ç├òES B├üSICAS:
+Nome: Debug Deal 1763582900268
+ID: 691e23b4c242a8001346cd83
+
+­ƒÄ» FUNIL E ETAPA:
+Pipeline ID: undefined
+Stage ID: undefined
+
+­ƒæñ USU├üRIO RESPONS├üVEL:
+User ID: 63d3f64aa6528000185e5ddd
+User Nome: BEATRIZ 
+
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+­ƒôï OBJETO COMPLETO (JSON):
+
+{
+  "_id": "691e23b4c242a8001346cd83",
+  "id": "691e23b4c242a8001346cd83",
+  "name": "Debug Deal 1763582900268",
+  "amount_montly": 0,
+  "amount_unique": 0,
+  "amount_total": 0,
+  "best_moment_to_touch": true,
+  "closed_at": null,
+  "created_at": "2025-11-19T17:08:20.533-03:00",
+  "updated_at": "2025-11-19T17:08:20.533-03:00",
+  "deal_lost_reason_id": null,
+  "deal_lost_note": null,
+  "prediction_date": null,
+  "win": null,
+  "rating": 1,
+  "hold": null,
+  "interactions": 0,
+  "last_note_content": null,
+  "deal_source_id": null,
+  "campaign_id": null,
+  "stop_time_limit": {},
+  "from_rdsm_integration": false,
+  "errors": {},
+  "c_cf_errors": {},
+  "user": {
+    "_id": "63d3f64aa6528000185e5ddd",
+    "id": "63d3f64aa6528000185e5ddd",
+    "name": "BEATRIZ "
+  },
+  "deal_pipeline": {
+    "id": "63d81825906fa10010e05051",
+    "name": "Funil de Clientes Novos"
+  },
+  "deal_stage": {
+    "_id": "6478a01a95b902000dc981ec",
+    "id": "6478a01a95b902000dc981ec",
+    "name": "Entrada Tr├ífego Pago",
+    "nickname": "ETP",
+    "deal_pipeline_id": "63d81825906fa10010e05051"
+  },
+  "deal_stage_histories": [
+    {
+      "_id": "691e23b4c242a8001346cd84",
+      "id": "691e23b4c242a8001346cd84",
+      "deal_stage_id": "6478a01a95b902000dc981ec",
+      "start_date": "2025-11-19T17:08:20.530-03:00",
+      "end_date": null
+    },
+    {
+      "_id": "691e23b4c242a8001346cd85",
+      "id": "691e23b4c242a8001346cd85",
+      "deal_stage_id": "6478a01a95b902000dc981ec",
+      "start_date": "2025-11-19T17:08:20.536-03:00",
+      "end_date": null
+    }
+  ],
+  "deal_custom_fields": [
+    {
+      "value": "true",
+      "created_at": null,
+      "updated_at": null,
+      "custom_field_id": "67a4c29d9207d10020ee88cb",
+      "custom_field": {
+        "_id": "67a4c29d9207d10020ee88cb",
+        "allow_new": false,
+        "created_at": "2025-02-06T11:09:33.371-03:00",
+        "display_rules": [
+          {
+            "_id": "67a4c29d9207d10020ee88cc",
+            "always": true,
+            "created_at": null,
+            "property": null,
+            "updated_at": null,
+            "value": null
+          }
+        ],
+        "for": "deal",
+        "input_format": null,
+        "input_mask": null,
+        "input_placeholder": null,
+        "instance_id": "63d3f648a6528000185e5ddc",
+        "label": "CNAE",
+        "max_length": null,
+        "min_length": null,
+        "opts": [
+          "true",
+          "false"
+        ],
+        "order": 7,
+        "required": false,
+        "slug": "cnae",
+        "type": "option",
+        "unique": false,
+        "updated_at": "2025-02-06T11:09:33.371-03:00",
+        "visible": true
+      }
+    }
+  ],
+  "deal_products": []
+}
