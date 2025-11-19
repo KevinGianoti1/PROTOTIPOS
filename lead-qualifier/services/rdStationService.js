@@ -8,8 +8,8 @@ const logger = require('../utils/logger');
 
 class RDStationService {
     constructor() {
-        // API v2 usa endpoint diferente
-        this.apiUrl = 'https://api.rd.services/crm/v2';
+        // API v1 aceita token da instância diretamente
+        this.apiUrl = 'https://crm.rdstation.com/api/v1';
         this.token = process.env.RD_STATION_API_TOKEN;
 
         if (!this.token) {
@@ -26,14 +26,22 @@ class RDStationService {
     }
 
     /**
-     * Cria headers para requisições à API
+     * Cria headers para requisições à API v1
      * @returns {Object}
      */
     getHeaders() {
         return {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.token}`
+            'Content-Type': 'application/json'
         };
+    }
+
+    /**
+     * Adiciona token como query parameter (API v1)
+     * @param {string} url - URL base
+     * @returns {string} - URL com token
+     */
+    addTokenToUrl(url) {
+        return `${url}?token=${this.token}`;
     }
 
     /**
@@ -54,19 +62,10 @@ class RDStationService {
         try {
             const { lead, empresa, validacao } = leadData;
 
-            // Payload simplificado para API v2
+            // Payload mínimo para API v1 - apenas campos obrigatórios
             const dealPayload = {
-                name: `${lead.nome} - ${empresa.nomeFantasia}`,
-                status: 'ongoing', // API v2 só aceita 'ongoing' na criação
-                custom_fields: {
-                    cnpj: empresa.cnpjFormatado,
-                    cnae_principal: empresa.cnaePrincipal.codigo,
-                    cnae_descricao: empresa.cnaePrincipal.descricao,
-                    origem: lead.origem,
-                    qualificado: validacao.qualificado ? 'Sim' : 'Não',
-                    motivo_qualificacao: validacao.motivo,
-                    telefone: lead.telefone,
-                    razao_social: empresa.razaoSocial
+                deal: {
+                    name: `${lead.nome} - ${empresa.nomeFantasia} (${empresa.cnpjFormatado})`
                 }
             };
 
@@ -76,16 +75,16 @@ class RDStationService {
             });
 
             const response = await axios.post(
-                `${this.apiUrl}/deals`,
+                this.addTokenToUrl(`${this.apiUrl}/deals`),
                 dealPayload,
                 { headers: this.getHeaders(), timeout: 15000 }
             );
 
-            logger.info('Deal criado com sucesso no RD Station', { dealId: response.data._id });
+            logger.info('Deal criado com sucesso no RD Station', { dealId: response.data.id });
 
             return {
                 success: true,
-                dealId: response.data._id,
+                dealId: response.data.id,
                 data: response.data
             };
 
@@ -126,7 +125,7 @@ class RDStationService {
             logger.info(`Marcando deal ${dealId} como perdido`, { motivo });
 
             const response = await axios.put(
-                `${this.apiUrl}/deals/${dealId}`,
+                this.addTokenToUrl(`${this.apiUrl}/deals/${dealId}`),
                 payload,
                 { headers: this.getHeaders(), timeout: 15000 }
             );
