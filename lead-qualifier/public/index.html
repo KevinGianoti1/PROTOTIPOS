@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Qualificação de Leads - MAXIFORCE</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>🎯 Sistema de Qualificação de Leads</h1>
+      <p class="subtitle">Validação automática de CNPJ e integração com RD Station CRM</p>
+    </header>
+
+    <div class="main-content">
+      <!-- Formulário -->
+      <div class="card">
+        <h2>📋 Dados do Lead</h2>
+        <form id="leadForm">
+          <div class="form-group">
+            <label for="cnpj">CNPJ *</label>
+            <input type="text" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00" required maxlength="18">
+          </div>
+
+          <div class="form-group">
+            <label for="nome">Nome do Contato *</label>
+            <input type="text" id="nome" name="nome" placeholder="João Silva" required>
+          </div>
+
+          <div class="form-group">
+            <label for="telefone">Telefone *</label>
+            <input type="tel" id="telefone" name="telefone" placeholder="(11) 99999-9999" required>
+          </div>
+
+          <div class="form-group">
+            <label for="origem">Origem do Lead</label>
+            <select id="origem" name="origem">
+              <option value="Site">Site</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Facebook">Facebook</option>
+              <option value="Teste">Teste Manual</option>
+            </select>
+          </div>
+
+          <button type="submit" id="submitBtn">
+            Validar Lead
+          </button>
+        </form>
+      </div>
+
+      <!-- Resultado -->
+      <div class="card">
+        <h2>📊 Resultado da Validação</h2>
+
+        <div class="loading" id="loading">
+          <div class="spinner"></div>
+          <p>Consultando dados do CNPJ...</p>
+        </div>
+
+        <div id="resultado">
+          <!-- Resultado será inserido aqui via JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>💼 MAXIFORCE - Sistema de Qualificação Automática de Leads</p>
+      <p style="margin-top: 0.5rem; font-size: 0.8rem;">Desenvolvido com Node.js + BrasilAPI + RD Station</p>
+    </footer>
+  </div>
+
+  <script>
+    const form = document.getElementById('leadForm');
+    const loading = document.getElementById('loading');
+    const resultado = document.getElementById('resultado');
+    const submitBtn = document.getElementById('submitBtn');
+    const cnpjInput = document.getElementById('cnpj');
+
+    // Máscara de CNPJ
+    cnpjInput.addEventListener('input', (e) => {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length <= 14) {
+        value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+        value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+        value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+        value = value.replace(/(\d{4})(\d)/, '$1-$2');
+      }
+      e.target.value = value;
+    });
+
+    // Submit do formulário
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = {
+        cnpj: document.getElementById('cnpj').value,
+        nome: document.getElementById('nome').value,
+        telefone: document.getElementById('telefone').value,
+        origem: document.getElementById('origem').value
+      };
+
+      // Mostra loading
+      loading.classList.add('active');
+      resultado.classList.remove('active');
+      submitBtn.disabled = true;
+
+      try {
+        const response = await fetch('/webhook/lead', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+
+        // Esconde loading
+        loading.classList.remove('active');
+        submitBtn.disabled = false;
+
+        if (data.success) {
+          mostrarResultado(data.resultado);
+        } else {
+          mostrarErro(data.error);
+        }
+
+      } catch (error) {
+        loading.classList.remove('active');
+        submitBtn.disabled = false;
+        mostrarErro('Erro ao conectar com o servidor: ' + error.message);
+      }
+    });
+
+    function mostrarResultado(data) {
+      const { empresa, validacao, rdStation } = data;
+
+      const qualificadoClass = validacao.qualificado ? 'alert-success' : 'alert-warning';
+      const qualificadoBadge = validacao.qualificado ? 'badge-success' : 'badge-error';
+      const qualificadoTexto = validacao.qualificado ? '✅ QUALIFICADO' : '❌ NÃO QUALIFICADO';
+      const qualificadoIcon = validacao.qualificado ? '✅' : '❌';
+
+      resultado.innerHTML = `
+        <div class="alert ${qualificadoClass}">
+          <h3>${qualificadoIcon} ${validacao.qualificado ? 'Lead Qualificado!' : 'Lead Não Qualificado'}</h3>
+          <p>${validacao.motivo}</p>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-item full-width">
+            <div class="info-label">Razão Social</div>
+            <div class="info-value">${empresa.razaoSocial}</div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Nome Fantasia</div>
+            <div class="info-value">${empresa.nomeFantasia}</div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">CNPJ</div>
+            <div class="info-value">${empresa.cnpjFormatado}</div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Situação</div>
+            <div class="info-value">${empresa.situacaoCadastral}</div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Porte</div>
+            <div class="info-value">${empresa.porte || 'N/A'}</div>
+          </div>
+
+          <div class="info-item full-width">
+            <div class="info-label">CNAE Principal</div>
+            <div class="info-value">${empresa.cnaePrincipal.codigo} - ${empresa.cnaePrincipal.descricao}</div>
+          </div>
+
+          ${empresa.cnaesSecundarios && empresa.cnaesSecundarios.length > 0 ? `
+          <div class="info-item full-width">
+            <div class="info-label">CNAEs Secundários (${empresa.cnaesSecundarios.length})</div>
+            <div class="info-value" style="max-height: 150px; overflow-y: auto;">
+              ${empresa.cnaesSecundarios.map(cnae => `
+                <div style="padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                  ${cnae.codigo} - ${cnae.descricao}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          ` : ''}
+
+          <div class="info-item full-width">
+            <div class="info-label">Endereço</div>
+            <div class="info-value">
+              ${empresa.endereco.logradouro}, ${empresa.endereco.numero} - ${empresa.endereco.bairro}<br>
+              ${empresa.endereco.municipio}/${empresa.endereco.uf} - CEP: ${empresa.endereco.cep}
+            </div>
+          </div>
+
+          ${empresa.telefone ? `
+          <div class="info-item">
+            <div class="info-label">Telefone</div>
+            <div class="info-value">${empresa.telefone}</div>
+          </div>
+          ` : ''}
+
+          ${empresa.email ? `
+          <div class="info-item">
+            <div class="info-label">E-mail</div>
+            <div class="info-value">${empresa.email}</div>
+          </div>
+          ` : ''}
+
+          <div class="info-item full-width">
+            <div class="info-label">Status RD Station</div>
+            <div class="info-value">
+              ${rdStation.mode === 'test'
+          ? '⚠️ Modo Teste (RD Station não configurado)'
+          : rdStation.success
+            ? `✅ Deal criado com sucesso ${rdStation.markedAsLost ? '(marcado como perdido)' : ''}`
+            : `❌ Erro: ${rdStation.error || 'Erro desconhecido'}`
+        }
+            </div>
+          </div>
+        </div>
+      `;
+
+      resultado.classList.add('active');
+    }
+
+    function mostrarErro(mensagem) {
+      resultado.innerHTML = `
+        <div class="alert alert-error">
+          <h3>❌ Erro</h3>
+          <p>${mensagem}</p>
+        </div>
+      `;
+      resultado.classList.add('active');
+    }
+  </script>
+</body>
+
+</html>
