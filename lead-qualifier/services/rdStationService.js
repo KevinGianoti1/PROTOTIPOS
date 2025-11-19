@@ -8,7 +8,8 @@ const logger = require('../utils/logger');
 
 class RDStationService {
     constructor() {
-        this.apiUrl = process.env.RD_STATION_API_URL || 'https://crm.rdstation.com/api/v1';
+        // API v2 usa endpoint diferente
+        this.apiUrl = 'https://api.rd.services/crm/v2';
         this.token = process.env.RD_STATION_API_TOKEN;
 
         if (!this.token) {
@@ -53,38 +54,19 @@ class RDStationService {
         try {
             const { lead, empresa, validacao } = leadData;
 
-            // Monta payload para criar deal
+            // Payload simplificado para API v2
             const dealPayload = {
-                deal: {
-                    name: `${lead.nome} - ${empresa.nomeFantasia}`,
-                    deal_stage_id: null, // Você pode configurar o ID da etapa do funil
-                    deal_source_id: null, // ID da fonte (Instagram/Site)
-                    user_id: null, // ID do vendedor responsável
-                    organization: {
-                        name: empresa.razaoSocial,
-                        legal_name: empresa.razaoSocial,
-                        cnpj: empresa.cnpj
-                    },
-                    contacts: [
-                        {
-                            name: lead.nome,
-                            phones: [
-                                {
-                                    phone: lead.telefone,
-                                    type: 'mobile'
-                                }
-                            ],
-                            email: empresa.email || ''
-                        }
-                    ],
-                    custom_fields: {
-                        cnpj: empresa.cnpjFormatado,
-                        cnae_principal: empresa.cnaePrincipal.codigo,
-                        cnae_descricao: empresa.cnaePrincipal.descricao,
-                        origem: lead.origem,
-                        qualificado: validacao.qualificado ? 'Sim' : 'Não',
-                        motivo_qualificacao: validacao.motivo
-                    }
+                name: `${lead.nome} - ${empresa.nomeFantasia}`,
+                status: 'ongoing', // API v2 só aceita 'ongoing' na criação
+                custom_fields: {
+                    cnpj: empresa.cnpjFormatado,
+                    cnae_principal: empresa.cnaePrincipal.codigo,
+                    cnae_descricao: empresa.cnaePrincipal.descricao,
+                    origem: lead.origem,
+                    qualificado: validacao.qualificado ? 'Sim' : 'Não',
+                    motivo_qualificacao: validacao.motivo,
+                    telefone: lead.telefone,
+                    razao_social: empresa.razaoSocial
                 }
             };
 
@@ -99,11 +81,11 @@ class RDStationService {
                 { headers: this.getHeaders(), timeout: 15000 }
             );
 
-            logger.info('Deal criado com sucesso no RD Station', { dealId: response.data.id });
+            logger.info('Deal criado com sucesso no RD Station', { dealId: response.data._id });
 
             return {
                 success: true,
-                dealId: response.data.id,
+                dealId: response.data._id,
                 data: response.data
             };
 
