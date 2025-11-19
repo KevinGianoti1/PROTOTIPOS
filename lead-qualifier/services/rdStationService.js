@@ -62,30 +62,82 @@ class RDStationService {
         try {
             const { lead, empresa, validacao } = leadData;
 
-            // Payload mínimo para API v1 - apenas campos obrigatórios
+            // Determina Source e Campaign baseado na origem
+            let dealSourceId, campaignId;
+            if (lead.origem === 'Instagram') {
+                dealSourceId = '63d81a9a732aa3001738fd73'; // Redes Sociais
+                campaignId = '64b82d4019f6fc001c8c89bb'; // Tráfego Pago
+            } else if (lead.origem === 'Site') {
+                dealSourceId = '6478af40d3422a0012d73a7e'; // Site
+                campaignId = '68cd8a3eebdea4001c02960f'; // Google ADS
+            }
+
+            // PASSO 1: Criar o deal com campos básicos
             const dealPayload = {
                 deal: {
-                    name: `${lead.nome} - ${empresa.nomeFantasia} (${empresa.cnpjFormatado})`
+                    name: `${lead.nome} - ${empresa.nomeFantasia} (${empresa.cnpjFormatado})`,
+                    deal_pipeline_id: '63d81825906fa10010e05051', // Funil de Clientes Novos
+                    deal_stage_id: '6478a01a95b902000dc981ec', // Entrada Tráfego Pago (ETP)
+                    user_id: '63d3f64aa6528000185e5ddd', // BEATRIZ
+                    deal_custom_fields: [
+                        {
+                            custom_field_id: '67a4c29d9207d10020ee88cb', // Campo CNAE
+                            value: validacao.qualificado ? 'true' : 'false'
+                        }
+                    ]
                 }
             };
 
             logger.info('Criando deal no RD Station', {
                 empresa: empresa.razaoSocial,
-                qualificado: validacao.qualificado
+                qualificado: validacao.qualificado,
+                origem: lead.origem
             });
 
-            const response = await axios.post(
+            const createResponse = await axios.post(
                 this.addTokenToUrl(`${this.apiUrl}/deals`),
                 dealPayload,
                 { headers: this.getHeaders(), timeout: 15000 }
             );
 
-            logger.info('Deal criado com sucesso no RD Station', { dealId: response.data.id });
+            const dealId = createResponse.data.id;
+            logger.info('Deal criado com sucesso', { dealId });
+
+            // PASSO 2: Atualizar o deal com Source e Campaign
+            if (dealSourceId || campaignId) {
+                const updatePayload = {
+                    deal: {}
+                };
+
+                if (dealSourceId) {
+                    updatePayload.deal.deal_source_id = dealSourceId;
+                }
+                if (campaignId) {
+                    updatePayload.deal.campaign_id = campaignId;
+                }
+
+                logger.info('Atualizando deal com fonte e campanha', {
+                    dealId,
+                    source_id: dealSourceId,
+                    campaign_id: campaignId
+                });
+
+                await axios.put(
+                    this.addTokenToUrl(`${this.apiUrl}/deals/${dealId}`),
+                    updatePayload,
+                    { headers: this.getHeaders(), timeout: 15000 }
+                );
+
+                logger.info('Deal atualizado com fonte e campanha');
+            }
+
+            // PASSO 3: Criar anotação com informações do CNPJ
+            await this.createDealNote(dealId, leadData);
 
             return {
                 success: true,
-                dealId: response.data.id,
-                data: response.data
+                dealId: dealId,
+                data: createResponse.data
             };
 
         } catch (error) {
@@ -95,6 +147,99 @@ class RDStationService {
             });
 
             throw new Error(`Erro ao criar deal no RD Station: ${error.message}`);
+        }
+    }
+
+    /**
+     * Cria uma anotação no deal com informações do CNPJ
+     * @param {string} dealId - ID do deal
+     * @param {Object} leadData - Dados do lead processado
+     * @returns {Promise<void>}
+     */
+    async createDealNote(dealId, leadData) {
+        try {
+            const { lead, empresa, validacao } = leadData;
+
+            // Formata CNAEs secundários
+            let cnaesSecundariosTexto = '';
+            if (empresa.cnaesSecundarios && empresa.cnaesSecundarios.length > 0) {
+                cnaesSecundariosTexto = empresa.cnaesSecundarios
+                    .map(cnae => `   • ${cnae.codigo} - ${cnae.descricao}`)
+                    .join('\n');
+            } else {
+                cnaesSecundariosTexto = '   Nenhum CNAE secundário';
+            }
+
+            // Monta o texto da anotação
+            const noteContent = `
+📊 INFORMAÇÕES DO CNPJ - Qualificação Automática
+
+🏢 DADOS DA EMPRESA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Razão Social: ${empresa.razaoSocial}
+• Nome Fantasia: ${empresa.nomeFantasia}
+• CNPJ: ${empresa.cnpjFormatado}
+• Porte: ${empresa.porte || 'Não informado'}
+• Natureza Jurídica: ${empresa.naturezaJuridica || 'Não informado'}
+• Capital Social: ${empresa.capitalSocial ? `R$ ${empresa.capitalSocial.toLocaleString('pt-BR')}` : 'Não informado'}
+
+📍 ENDEREÇO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${empresa.logradouro}, ${empresa.numero || 'S/N'}
+${empresa.complemento ? empresa.complemento + '\n' : ''}${empresa.bairro} - ${empresa.municipio}/${empresa.uf}
+CEP: ${empresa.cep}
+
+📞 CONTATO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Telefone Lead: ${lead.telefone}
+• Email: ${empresa.email || 'Não informado'}
+• DDD: ${empresa.ddd || 'Não informado'}
+
+🏭 ATIVIDADE ECONÔMICA (CNAE):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 CNAE Principal:
+   ${empresa.cnaePrincipal.codigo} - ${empresa.cnaePrincipal.descricao}
+
+📋 CNAEs Secundários:
+${cnaesSecundariosTexto}
+
+✅ RESULTADO DA QUALIFICAÇÃO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status: ${validacao.qualificado ? '✅ QUALIFICADO' : '❌ NÃO QUALIFICADO'}
+Motivo: ${validacao.motivo}
+${validacao.cnaeMatch ? `CNAE Match: ${validacao.cnaeMatch.codigo} - ${validacao.cnaeMatch.descricao}` : ''}
+
+📥 ORIGEM DO LEAD:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fonte: ${lead.origem}
+Data: ${new Date().toLocaleString('pt-BR')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 Anotação gerada automaticamente pelo sistema de qualificação de leads
+            `.trim();
+
+            const notePayload = {
+                deal_note: {
+                    content: noteContent
+                }
+            };
+
+            logger.info('Criando anotação no deal', { dealId });
+
+            await axios.post(
+                this.addTokenToUrl(`${this.apiUrl}/deals/${dealId}/notes`),
+                notePayload,
+                { headers: this.getHeaders(), timeout: 15000 }
+            );
+
+            logger.info('Anotação criada com sucesso no deal');
+
+        } catch (error) {
+            logger.error('Erro ao criar anotação no deal', {
+                error: error.message,
+                response: error.response?.data
+            });
+            // Não lança erro para não interromper o fluxo principal
         }
     }
 
@@ -117,7 +262,7 @@ class RDStationService {
         try {
             const payload = {
                 deal: {
-                    deal_stage_id: null, // ID da etapa "Perdido"
+                    deal_lost_reason_id: '67c993e56a9a7f0017f83aba', // CNAE Fora do Escopo
                     lost_reason: motivo
                 }
             };
@@ -125,7 +270,7 @@ class RDStationService {
             logger.info(`Marcando deal ${dealId} como perdido`, { motivo });
 
             const response = await axios.put(
-                this.addTokenToUrl(`${this.apiUrl}/deals/${dealId}`),
+                this.addTokenToUrl(`${this.apiUrl}/deals/${dealId}/lost`),
                 payload,
                 { headers: this.getHeaders(), timeout: 15000 }
             );
