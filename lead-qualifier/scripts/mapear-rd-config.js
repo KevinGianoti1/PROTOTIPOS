@@ -22,18 +22,25 @@ async function mapearPipelines() {
     console.log('\n📊 ========== PIPELINES (FUNIS) ==========\n');
 
     const data = await fetchWithToken('/deal_pipelines');
-    if (!data) return;
+    if (!data || !data.deal_pipelines) {
+        console.log('   Nenhum pipeline encontrado ou erro ao buscar.');
+        return;
+    }
 
     data.deal_pipelines.forEach((pipeline, index) => {
         console.log(`\n${index + 1}. Pipeline: ${pipeline.name}`);
         console.log(`   ID: ${pipeline._id}`);
         console.log(`   Etapas (Stages):`);
 
-        pipeline.deal_stages.forEach((stage, stageIndex) => {
-            console.log(`      ${stageIndex + 1}. ${stage.name}`);
-            console.log(`         ID: ${stage._id}`);
-            console.log(`         Tipo: ${stage.type || 'N/A'}`);
-        });
+        if (pipeline.deal_stages && pipeline.deal_stages.length > 0) {
+            pipeline.deal_stages.forEach((stage, stageIndex) => {
+                console.log(`      ${stageIndex + 1}. ${stage.name}`);
+                console.log(`         ID: ${stage._id}`);
+                console.log(`         Tipo: ${stage.type || 'N/A'}`);
+            });
+        } else {
+            console.log(`      Nenhuma etapa encontrada.`);
+        }
     });
 }
 
@@ -41,7 +48,10 @@ async function mapearFontes() {
     console.log('\n\n📍 ========== FONTES (SOURCES) ==========\n');
 
     const data = await fetchWithToken('/deal_sources');
-    if (!data) return;
+    if (!data || !data.deal_sources) {
+        console.log('   Nenhuma fonte encontrada ou erro ao buscar.');
+        return;
+    }
 
     data.deal_sources.forEach((source, index) => {
         console.log(`${index + 1}. ${source.name}`);
@@ -53,7 +63,10 @@ async function mapearMotivosPerda() {
     console.log('\n\n❌ ========== MOTIVOS DE PERDA ==========\n');
 
     const data = await fetchWithToken('/deal_lost_reasons');
-    if (!data) return;
+    if (!data || !data.deal_lost_reasons) {
+        console.log('   Nenhum motivo de perda encontrado ou erro ao buscar.');
+        return;
+    }
 
     data.deal_lost_reasons.forEach((reason, index) => {
         console.log(`${index + 1}. ${reason.name}`);
@@ -65,7 +78,10 @@ async function mapearUsuarios() {
     console.log('\n\n👥 ========== USUÁRIOS (VENDEDORES) ==========\n');
 
     const data = await fetchWithToken('/users');
-    if (!data) return;
+    if (!data || !data.users) {
+        console.log('   Nenhum usuário encontrado ou erro ao buscar.');
+        return;
+    }
 
     data.users.forEach((user, index) => {
         console.log(`${index + 1}. ${user.name}`);
