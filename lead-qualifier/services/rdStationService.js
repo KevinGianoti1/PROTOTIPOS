@@ -47,17 +47,24 @@ class RDStationService {
     /**
      * Busca uma organização pelo nome (Razão Social)
      * @param {string} name - Razão Social
+     * @param {boolean} requireExact - Se true, exige correspondência exata (case insensitive)
      * @returns {Promise<string|null>} - ID da organização ou null
      */
-    async searchOrganization(name) {
+    async searchOrganization(name, requireExact = true) {
         try {
             const response = await axios.get(
                 this.addTokenToUrl(`${this.apiUrl}/organizations`),
                 {
-                    params: { name },
+                    params: { q: name },
                     headers: this.getHeaders()
                 }
             );
+
+            logger.info('Resultado da busca de organização', {
+                termo: name,
+                encontrados: response.data.organizations ? response.data.organizations.length : 0,
+                nomes: response.data.organizations ? response.data.organizations.map(o => o.name) : []
+            });
 
             if (response.data && response.data.organizations && response.data.organizations.length > 0) {
                 // Filtra para encontrar correspondência EXATA de nome (case insensitive)
@@ -67,6 +74,29 @@ class RDStationService {
 
                 if (exactMatch) {
                     return exactMatch.id;
+                }
+
+                // Se não exige exata e tem resultados, tenta encontrar algo parecido
+                if (!requireExact) {
+                    // Tenta encontrar um que contenha o nome ou seja contido pelo nome
+                    const fuzzyMatch = response.data.organizations.find(
+                        org => org.name.trim().toLowerCase().includes(name.trim().toLowerCase()) ||
+                            name.trim().toLowerCase().includes(org.name.trim().toLowerCase())
+                    );
+
+                    if (fuzzyMatch) {
+                        logger.info('Encontrado match aproximado', {
+                            buscado: name,
+                            encontrado: fuzzyMatch.name,
+                            id: fuzzyMatch.id
+                        });
+                        return fuzzyMatch.id;
+                    }
+
+                    logger.warn('Nenhum match aproximado encontrado nos resultados da busca', {
+                        buscado: name,
+                        resultados: response.data.organizations.map(o => o.name)
+                    });
                 }
             }
             return null;
@@ -81,7 +111,7 @@ class RDStationService {
      * @param {Object} empresa - Dados da empresa
      * @returns {Promise<string>} - ID da organização criada
      */
-    async createOrganization(empresa, retry = true) {
+    async createOrganization(empresa) {
         try {
             const payload = {
                 organization: {
@@ -101,14 +131,29 @@ class RDStationService {
 
             return response.data.id;
         } catch (error) {
-            // Se erro for 422 (Empresa já cadastrada) e for a primeira tentativa
-            if (retry && error.response && error.response.status === 422) {
-                logger.info('Empresa já cadastrada com este nome. Tentando criar com CNPJ no nome...');
-                const empresaComCnpj = {
-                    ...empresa,
-                    razaoSocial: `${empresa.razaoSocial} (${empresa.cnpjFormatado})`
-                };
-                return this.createOrganization(empresaComCnpj, false);
+            // Se erro for 422 (Empresa já cadastrada)
+            if (error.response && error.response.status === 422) {
+                logger.warn('Empresa já cadastrada (422). Iniciando tentativa de recuperação de ID...', { nome: empresa.razaoSocial });
+
+                // Tenta recuperar com retries para dar tempo de indexação
+                // Aumentando para 5 tentativas com delays maiores (Total ~30s)
+                for (let i = 0; i < 5; i++) {
+                    // Espera: 2s, 4s, 6s, 8s, 10s
+                    const delay = (i + 1) * 2000;
+
+                    logger.info(`Tentativa ${i + 1}/5 de recuperação. Aguardando ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+
+                    // Tenta buscar novamente, aceitando match aproximado
+                    const existingId = await this.searchOrganization(empresa.razaoSocial, false);
+
+                    if (existingId) {
+                        logger.info('ID da organização recuperado com sucesso', { existingId });
+                        return existingId;
+                    }
+                }
+
+                logger.error('Falha ao recuperar ID da organização existente após múltiplas tentativas');
             }
 
             logger.error('Erro ao criar organização', { error: error.message });
@@ -184,17 +229,13 @@ class RDStationService {
                 campaignId = '68cd8a3eebdea4001c02960f'; // Google ADS
             }
 
-            // PASSO 1: Criar o deal com campos básicos E VÍNCULOS (POST funciona para contatos)
+            // PASSO 1: Criar o deal SEM vínculos (só campos básicos)
             const dealPayload = {
                 deal: {
                     name: `${lead.origem} - ${empresa.razaoSocial} - ${empresa.cnpjFormatado}`,
                     deal_pipeline_id: '63d81825906fa10010e05051',
                     deal_stage_id: '6478a01a95b902000dc981ec',
                     user_id: '63d3f64aa6528000185e5ddd',
-                    organization_id: organizationId, // Vincula Organização
-                    deal_contacts: [
-                        { contact_id: contactId } // Vincula Contato
-                    ],
                     deal_custom_fields: [
                         {
                             custom_field_id: '67a4c29d9207d10020ee88cb',
@@ -204,10 +245,8 @@ class RDStationService {
                 }
             };
 
-            logger.info('Criando deal no RD Station (Passo 1: Completo)', {
-                empresa: empresa.razaoSocial,
-                organizationId,
-                contactId
+            logger.info('Criando deal no RD Station (sem vínculos)', {
+                empresa: empresa.razaoSocial
             });
 
             const createResponse = await axios.post(
@@ -219,7 +258,42 @@ class RDStationService {
             const dealId = createResponse.data.id;
             logger.info('Deal criado com sucesso', { dealId });
 
-            // PASSO 2: Atualizar o deal com Fonte e Campanha (mantendo separado por segurança)
+            // PASSO 2: Vincular Organização (PUT separado)
+            try {
+                logger.info('Vinculando organização ao deal...', { dealId, organizationId });
+                await axios.put(
+                    this.addTokenToUrl(`${this.apiUrl}/deals/${dealId}`),
+                    {
+                        deal: {
+                            organization_id: organizationId
+                        }
+                    },
+                    { headers: this.getHeaders(), timeout: 15000 }
+                );
+                logger.info('✅ Organização vinculada com sucesso');
+            } catch (err) {
+                logger.error('❌ Erro ao vincular organização', { error: err.message });
+            }
+
+            // PASSO 3: Vincular Deal ao Contato (PUT no contato com deal_ids)
+            try {
+                logger.info('Vinculando deal ao contato...', { dealId, contactId });
+                await axios.put(
+                    this.addTokenToUrl(`${this.apiUrl}/contacts/${contactId}`),
+                    {
+                        deal_ids: [dealId]
+                    },
+                    { headers: this.getHeaders(), timeout: 15000 }
+                );
+                logger.info('✅ Deal vinculado ao contato com sucesso');
+            } catch (err) {
+                logger.error('❌ Erro ao vincular deal ao contato', {
+                    error: err.message,
+                    response: err.response?.data
+                });
+            }
+
+            // PASSO 4: Atualizar fonte e campanha
             if (dealSourceId || campaignId) {
                 const updatePayload = {
                     deal: {}
@@ -241,7 +315,7 @@ class RDStationService {
                 }
             }
 
-            // PASSO 3: Criar anotação com informações do CNPJ
+            // PASSO 5: Criar anotação com informações do CNPJ
             await this.createDealNote(dealId, leadData);
 
             return {
@@ -260,12 +334,6 @@ class RDStationService {
         }
     }
 
-    /**
-     * Cria uma anotação no deal com informações do CNPJ
-     * @param {string} dealId - ID do deal
-     * @param {Object} leadData - Dados do lead processado
-     * @returns {Promise<void>}
-     */
     async createDealNote(dealId, leadData) {
         try {
             const { lead, empresa, validacao } = leadData;
@@ -275,9 +343,20 @@ class RDStationService {
             if (empresa.cnaesSecundarios && empresa.cnaesSecundarios.length > 0) {
                 cnaesSecundariosTexto = empresa.cnaesSecundarios
                     .map(cnae => `   • ${cnae.codigo} - ${cnae.descricao}`)
-                    .join('\n');
+                    .join('\\n');
             } else {
                 cnaesSecundariosTexto = '   Nenhum CNAE secundário';
+            }
+
+            // Adiciona resumo da conversa se disponível
+            let conversationSummary = '';
+            if (leadData.conversationSummary) {
+                conversationSummary = `
+
+💬 RESUMO DA CONVERSA COM A MÁRCIA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${leadData.conversationSummary}
+`;
             }
 
             // Monta o texto da anotação
@@ -296,7 +375,7 @@ class RDStationService {
 📍 ENDEREÇO:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${empresa.logradouro}, ${empresa.numero || 'S/N'}
-${empresa.complemento ? empresa.complemento + '\n' : ''}${empresa.bairro} - ${empresa.municipio}/${empresa.uf}
+${empresa.complemento ? empresa.complemento + '\\n' : ''}${empresa.bairro} - ${empresa.municipio}/${empresa.uf}
 CEP: ${empresa.cep}
 
 📞 CONTATO:
@@ -318,7 +397,7 @@ ${cnaesSecundariosTexto}
 Status: ${validacao.qualificado ? '✅ QUALIFICADO' : '❌ NÃO QUALIFICADO'}
 Motivo: ${validacao.motivo}
 ${validacao.cnaeMatch ? `CNAE Match: ${validacao.cnaeMatch.codigo} - ${validacao.cnaeMatch.descricao}` : ''}
-
+${conversationSummary}
 📥 ORIGEM DO LEAD:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Fonte: ${lead.origem}

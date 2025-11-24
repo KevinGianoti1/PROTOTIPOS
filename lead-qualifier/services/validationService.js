@@ -27,6 +27,45 @@ class ValidationService {
     }
 
     /**
+     * Valida CNAE usando a lista da Márcia (do N8N)
+     * @param {string} cnaePrincipal - CNAE principal
+     * @param {Array} cnaesSecundarios - Array de CNAEs secundários
+     * @returns {boolean} - True se aprovado
+     */
+    validateCNAE(cnaePrincipal, cnaesSecundarios = []) {
+        // Lista de CNAEs válidos extraída do N8N (Márcia)
+        const cnaesValidos = new Set([
+            "4744001", "4744099", "4672900", "4742300", "4679699",
+            "4673700", "4663000", "4744003", "4744005", "4789099",
+            "4642702", "4755502", "4679601", "7739099", "4759899",
+            "4741500", "4661300", "4662100", "4679604", "4669999",
+            "7319002", "4613300"
+        ]);
+
+        // Normaliza o CNAE principal
+        const principal = this.normalizeCNAE(cnaePrincipal);
+
+        // Verifica principal
+        if (cnaesValidos.has(principal)) {
+            logger.info(`✅ CNAE Principal aprovado: ${principal}`);
+            return true;
+        }
+
+        // Verifica secundários
+        for (const cnae of cnaesSecundarios) {
+            const normalizado = this.normalizeCNAE(cnae.codigo || cnae);
+            if (cnaesValidos.has(normalizado)) {
+                logger.info(`✅ CNAE Secundário aprovado: ${normalizado}`);
+                return true;
+            }
+        }
+
+        logger.warn(`❌ Nenhum CNAE aprovado. Principal: ${principal}`);
+        return false;
+    }
+
+
+    /**
      * Valida se a empresa está no PCI baseado nos CNAEs
      * @param {Object} empresaData - Dados da empresa obtidos pela consulta CNPJ
      * @returns {Object} - Resultado da validação

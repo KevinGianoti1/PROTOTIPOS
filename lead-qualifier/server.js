@@ -6,6 +6,7 @@ const path = require('path');
 const cnpjService = require('./services/cnpjService');
 const validationService = require('./services/validationService');
 const rdStationService = require('./services/rdStationService');
+const whatsappService = require('./services/whatsappService');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -96,9 +97,18 @@ app.get('/api/cnaes-permitidos', (req, res) => {
 });
 
 // Inicia o servidor
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     logger.info(`🚀 Servidor rodando na porta ${PORT}`);
     logger.info(`📊 Interface de teste: http://localhost:${PORT}`);
     logger.info(`🔌 Webhook endpoint: http://localhost:${PORT}/webhook/lead`);
     logger.info(`✅ RD Station configurado: ${rdStationService.isConfigured() ? 'SIM' : 'NÃO (modo teste)'}`);
+
+    // Inicializa WhatsApp (Márcia)
+    try {
+        logger.info('🤖 Inicializando Márcia (WhatsApp Agent)...');
+        await whatsappService.initialize();
+    } catch (error) {
+        logger.error('❌ Erro ao inicializar WhatsApp:', error.message);
+        logger.warn('⚠️ Servidor continuará sem WhatsApp. Configure OPENAI_API_KEY no .env para ativar.');
+    }
 });
