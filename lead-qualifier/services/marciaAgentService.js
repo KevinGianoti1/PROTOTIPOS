@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const cnpjService = require('./cnpjService');
 const validationService = require('./validationService');
 const rdStationService = require('./rdStationService');
+const databaseService = require('./databaseService');
 
 /**
  * Serviço do Agente Márcia
@@ -13,7 +14,9 @@ const rdStationService = require('./rdStationService');
 class MarciaAgentService {
     constructor() {
         this.openai = null;
-        this.conversations = new Map(); // Armazena estado das conversas por telefone
+
+        // Inicializa Banco de Dados
+        databaseService.init().catch(err => logger.error('Erro fatal ao iniciar DB:', err));
 
         // Inicializa OpenAI se a chave estiver configurada
         if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') {
@@ -38,29 +41,25 @@ class MarciaAgentService {
         }
 
         try {
-            // Recupera ou cria conversa
-            let conversation = this.conversations.get(phoneNumber);
-            if (!conversation) {
-                conversation = {
-                    messages: [],
-                    data: {}, // Dados coletados
-                    ready: false
-                };
-                this.conversations.set(phoneNumber, conversation);
+            // Recupera ou cria contato no DB
+            let contact = await databaseService.getContact(phoneNumber);
+
+            if (!contact) {
+                contact = await databaseService.createContact(phoneNumber, { ready: false });
             }
 
             // Adiciona mensagem do usuário ao histórico
-            conversation.messages.push({
-                role: 'user',
-                content: message
-            });
+            await databaseService.addMessage(phoneNumber, 'user', message);
+
+            // Recupera histórico para o prompt
+            const history = await databaseService.getHistory(phoneNumber);
 
             // Chama OpenAI
             const completion = await this.openai.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: [
                     { role: 'system', content: this.getSystemPrompt() },
-                    ...conversation.messages
+                    ...history
                 ],
                 temperature: 0.7,
                 max_tokens: 1200
@@ -69,24 +68,29 @@ class MarciaAgentService {
             const assistantMessage = completion.choices[0].message.content;
 
             // Adiciona resposta ao histórico
-            conversation.messages.push({
-                role: 'assistant',
-                content: assistantMessage
-            });
+            await databaseService.addMessage(phoneNumber, 'assistant', assistantMessage);
 
             // Tenta extrair dados estruturados da resposta
             const extractedData = this.extractDataFromResponse(assistantMessage);
 
-            // Atualiza dados coletados
-            Object.assign(conversation.data, extractedData);
+            // Atualiza dados coletados no cache do contato
+            const currentData = contact.data_cache || {};
+            const updatedData = { ...currentData, ...extractedData };
+
+            await databaseService.updateContact(phoneNumber, {
+                data_cache: updatedData,
+                // Se extraiu CNPJ ou Nome, já salva nas colunas dedicadas também para facilitar busca
+                ...(extractedData.cnpj && { cnpj: extractedData.cnpj }),
+                ...(extractedData.name && { name: extractedData.name }),
+                ...(extractedData.email && { email: extractedData.email })
+            });
 
             // Verifica se a coleta está completa
             if (extractedData.ready === true) {
-                conversation.ready = true;
                 logger.info('✅ Coleta completa para', phoneNumber);
 
                 // Processa o lead
-                await this.processCompleteLead(phoneNumber, conversation.data);
+                await this.processCompleteLead(phoneNumber, updatedData);
             }
 
             return assistantMessage;
@@ -112,16 +116,15 @@ class MarciaAgentService {
 
             if (!isValid) {
                 logger.info('❌ CNAE não aprovado para', phoneNumber);
-                // Márcia já enviou a mensagem de break-up
-                this.conversations.delete(phoneNumber);
+                await databaseService.updateContact(phoneNumber, { stage: 'disqualified' });
                 return;
             }
 
-            // 3. Gera resumo da conversa
-            const conversation = this.conversations.get(phoneNumber);
+            // 3. Gera resumo da conversa do histórico
+            const history = await databaseService.getHistory(phoneNumber);
             let conversationSummary = '';
-            if (conversation && conversation.messages) {
-                conversationSummary = conversation.messages
+            if (history) {
+                conversationSummary = history
                     .map(msg => `${msg.role === 'user' ? '👤 Cliente' : '🤖 Márcia'}: ${msg.content}`)
                     .join('\n\n');
             }
@@ -162,8 +165,8 @@ class MarciaAgentService {
 
             logger.info('✅ Lead processado com sucesso:', result);
 
-            // Limpa conversa
-            this.conversations.delete(phoneNumber);
+            // Marca como completado no DB (não deleta para manter histórico)
+            await databaseService.updateContact(phoneNumber, { stage: 'completed' });
 
         } catch (error) {
             logger.error('❌ Erro ao processar lead completo:', error);
