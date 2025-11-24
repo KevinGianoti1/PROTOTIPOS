@@ -81,7 +81,7 @@ class RDStationService {
      * @param {Object} empresa - Dados da empresa
      * @returns {Promise<string>} - ID da organização criada
      */
-    async createOrganization(empresa) {
+    async createOrganization(empresa, retry = true) {
         try {
             const payload = {
                 organization: {
@@ -101,6 +101,16 @@ class RDStationService {
 
             return response.data.id;
         } catch (error) {
+            // Se erro for 422 (Empresa já cadastrada) e for a primeira tentativa
+            if (retry && error.response && error.response.status === 422) {
+                logger.info('Empresa já cadastrada com este nome. Tentando criar com CNPJ no nome...');
+                const empresaComCnpj = {
+                    ...empresa,
+                    razaoSocial: `${empresa.razaoSocial} (${empresa.cnpjFormatado})`
+                };
+                return this.createOrganization(empresaComCnpj, false);
+            }
+
             logger.error('Erro ao criar organização', { error: error.message });
             throw error;
         }
