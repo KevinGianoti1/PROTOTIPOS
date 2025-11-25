@@ -8,9 +8,9 @@ let productChart = null;
 let geoChart = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    loadOrigins();
+    loadSources();
     updateDashboard();
-    // Refresh dashboard every 30 seconds
-    setInterval(updateDashboard, 30000);
 });
 
 async function loadOrigins() {
@@ -158,6 +158,16 @@ function updateOriginChart(data) {
             plugins: { legend: { position: 'right', labels: { color: '#A8A8B3' } } }
         }
     });
+    // Click on a segment to filter by that origin
+    originChart.canvas.onclick = function (evt) {
+        const points = originChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+        if (points.length) {
+            const index = points[0].index;
+            const selectedOrigin = data.map(d => d.name)[index];
+            document.getElementById('originSelect').value = selectedOrigin;
+            applyFilters();
+        }
+    };
 }
 
 async function updateFunnelChart() {
@@ -331,15 +341,28 @@ async function updateRecentLeads() {
 
 async function applyFilters() {
     const origin = document.getElementById('originSelect').value;
-    const source = document.getElementById('sourceSelect').value;
-    const campaign = document.getElementById('campaignSelect').value;
+    // Determine linked source and campaign based on origin
+    let source = '';
+    let campaign = '';
+    if (origin === 'Site') {
+        source = 'Site';
+        campaign = 'Google ADS';
+    } else if (origin === 'Instagram') {
+        source = 'Redes Sociais';
+        campaign = 'Tráfego Pago';
+    } else {
+        source = document.getElementById('sourceSelect').value;
+        campaign = document.getElementById('campaignSelect').value;
+    }
     const stage = document.getElementById('stageSelect').value;
     const params = new URLSearchParams();
     if (origin) params.append('origin', origin);
     if (source) params.append('source', source);
     if (campaign) params.append('campaign', campaign);
     if (stage) params.append('stage', stage);
-    const res = await fetch(`/api/dashboard/filter?${params.toString()}`);
+    const queryString = params.toString();
+    const url = queryString ? `/api/dashboard/filter?${queryString}` : '/api/dashboard/filter';
+    const res = await fetch(url);
     const leads = await res.json();
     renderTable(leads);
 }
