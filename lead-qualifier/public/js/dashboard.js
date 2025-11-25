@@ -392,16 +392,12 @@ async function applyFilters(overrides = {}) {
         campaign = overrides.campaign || document.getElementById('campaignSelect').value;
     }
     const stage = overrides.stage || document.getElementById('stageSelect').value;
-    const start_date = overrides.start_date || document.getElementById('startDate').value;
-    const end_date = overrides.end_date || document.getElementById('endDate').value;
 
     const filters = {
         origin,
         source,
         campaign,
         stage,
-        start_date,
-        end_date,
         ...overrides // Overrides take precedence (e.g. click on chart)
     };
 
