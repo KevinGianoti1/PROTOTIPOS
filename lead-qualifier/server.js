@@ -40,7 +40,7 @@ app.post('/webhook/lead', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Campos obrigatórios: cnpj, nome, telefone' });
         }
         logger.info('Novo lead recebido', { cnpj, nome, origem: origem || 'não informado' });
-        const resultado = await validationService.processarLead({ cnpj, nome, telefone, origem: origem || 'Teste' }, cnpjService);
+        const resultado = await validationService.processarLead({ cnpj, nome, telefone, origem: origem || 'Teste' }, cnpjService, databaseService);
         let rdStationResult = null;
         if (rdStationService.isConfigured()) {
             try {
@@ -134,6 +134,76 @@ app.get('/api/dashboard/filter', async (req, res) => {
         res.json(leads);
     } catch (error) {
         logger.error('Erro ao buscar leads filtrados:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// --- New Phase 1 Endpoints ---
+
+// Advanced statistics
+app.get('/api/dashboard/advanced-stats', async (req, res) => {
+    try {
+        const stats = await databaseService.getAdvancedStats();
+        res.json(stats);
+    } catch (error) {
+        logger.error('Erro ao buscar estatísticas avançadas:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Lead score distribution
+app.get('/api/dashboard/lead-score-distribution', async (req, res) => {
+    try {
+        const distribution = await databaseService.getLeadScoreDistribution();
+        res.json(distribution);
+    } catch (error) {
+        logger.error('Erro ao buscar distribuição de scores:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Top CNAEs
+app.get('/api/dashboard/top-cnaes', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 5;
+        const topCNAEs = await databaseService.getTopCNAEs(limit);
+        res.json(topCNAEs);
+    } catch (error) {
+        logger.error('Erro ao buscar top CNAEs:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Top products
+app.get('/api/dashboard/top-products', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 5;
+        const topProducts = await databaseService.getTopProducts(limit);
+        res.json(topProducts);
+    } catch (error) {
+        logger.error('Erro ao buscar top produtos:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Geographic distribution
+app.get('/api/dashboard/geographic', async (req, res) => {
+    try {
+        const distribution = await databaseService.getGeographicDistribution();
+        res.json(distribution);
+    } catch (error) {
+        logger.error('Erro ao buscar distribuição geográfica:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Funnel data
+app.get('/api/dashboard/funnel', async (req, res) => {
+    try {
+        const funnelData = await databaseService.getFunnelData();
+        res.json(funnelData);
+    } catch (error) {
+        logger.error('Erro ao buscar dados do funil:', error);
         res.status(500).json({ error: 'Erro interno' });
     }
 });

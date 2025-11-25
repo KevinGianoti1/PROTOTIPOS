@@ -8,6 +8,7 @@
     --success-color: #04D361;
     --danger-color: #F75A68;
     --warning-color: #FBA94C;
+    --info-color: #60A5FA;
     --border-color: #323238;
 }
 
@@ -77,7 +78,6 @@ header {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 1.5rem;
-    /* Glassmorphism subtle effect */
     background: linear-gradient(180deg, rgba(32, 32, 36, 0.8) 0%, rgba(32, 32, 36, 1) 100%);
     backdrop-filter: blur(10px);
 }
@@ -118,6 +118,10 @@ header {
 
 .text-warning {
     color: var(--warning-color);
+}
+
+.text-info {
+    color: var(--info-color);
 }
 
 /* Filters Section */
@@ -171,27 +175,67 @@ header {
     background: #e66000;
 }
 
+/* Temperature Section */
+.temperature-section {
+    margin-bottom: 2rem;
+}
+
+.temperature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.temp-card {
+    text-align: center;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.temp-card:hover {
+    transform: translateY(-4px);
+}
+
+.temp-hot {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.temp-warm {
+    background: rgba(251, 169, 76, 0.1);
+    border-color: rgba(251, 169, 76, 0.3);
+}
+
+.temp-cold {
+    background: rgba(96, 165, 250, 0.1);
+    border-color: rgba(96, 165, 250, 0.3);
+}
+
+.temp-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.temp-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.temp-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
 /* Charts Grid */
 .charts-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 1.5rem;
     margin-bottom: 2rem;
-}
-
-/* Content Grid */
-.content-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 1.5rem;
-}
-
-@media (max-width: 768px) {
-
-    .content-grid,
-    .charts-grid {
-        grid-template-columns: 1fr;
-    }
 }
 
 .card-header {
@@ -237,15 +281,10 @@ header {
     flex: 1;
     position: relative;
     min-height: 0;
-    /* Fix for Chart.js resizing */
 }
 
 /* Table */
-.full-width {
-    grid-column: 1 / -1;
-}
-
-.table-responsive {
+.table-container {
     overflow-x: auto;
 }
 
@@ -298,4 +337,65 @@ tr:last-child td {
 .badge-disqualified {
     background: rgba(239, 68, 68, 0.1);
     color: #F87171;
+}
+
+/* Lead Score Badges */
+.score-high {
+    color: var(--success-color);
+    font-weight: 700;
+}
+
+.score-medium {
+    color: var(--warning-color);
+    font-weight: 700;
+}
+
+.score-low {
+    color: var(--danger-color);
+    font-weight: 700;
+}
+
+/* Temperature Badges in Table */
+.badge-quente {
+    background: rgba(239, 68, 68, 0.15);
+    color: #F87171;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.badge-morno {
+    background: rgba(251, 169, 76, 0.15);
+    color: #FBBF24;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.badge-frio {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60A5FA;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .temperature-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .table-container {
+        font-size: 0.75rem;
+    }
+
+    th,
+    td {
+        padding: 0.5rem;
+    }
 }

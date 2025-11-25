@@ -228,7 +228,20 @@ class DatabaseService {
 
     async getRecentLeads(limit = 10) {
         return await this.db.all(`
-            SELECT name, phone, stage, origin, campaign, source, created_at 
+            SELECT 
+                name, 
+                razao_social,
+                phone, 
+                cidade,
+                estado,
+                cnae_descricao,
+                lead_score,
+                temperatura,
+                stage, 
+                origin, 
+                campaign, 
+                source, 
+                created_at 
             FROM contacts 
             ORDER BY created_at DESC 
             LIMIT ?
@@ -236,7 +249,21 @@ class DatabaseService {
     }
 
     async getLeadsByFilter(filters = {}) {
-        let query = 'SELECT name, phone, stage, origin, campaign, source, created_at FROM contacts WHERE 1=1';
+        let query = `SELECT 
+            name, 
+            razao_social,
+            phone, 
+            cidade,
+            estado,
+            cnae_descricao,
+            lead_score,
+            temperatura,
+            stage, 
+            origin, 
+            campaign, 
+            source, 
+            created_at 
+        FROM contacts WHERE 1=1`;
         const params = [];
 
         if (filters.origin) {
@@ -250,8 +277,8 @@ class DatabaseService {
         }
 
         if (filters.campaign) {
-            query += ' AND campaign LIKE ?';
-            params.push(`%${filters.campaign}%`);
+            query += ' AND campaign = ?';
+            params.push(filters.campaign);
         }
 
         if (filters.stage) {

@@ -8,6 +8,7 @@ const validationService = require('./validationService');
 const rdStationService = require('./rdStationService');
 const databaseService = require('./databaseService');
 const knowledgeBaseService = require('./knowledgeBaseService');
+const leadScoringService = require('./leadScoringService');
 
 /**
  * Serviço do Agente Márcia
@@ -73,8 +74,19 @@ class MarciaAgentService {
                 ...(extractedData.email && { email: extractedData.email }),
                 ...(extractedData.origin && { origin: extractedData.origin }),
                 ...(extractedData.campaign && { campaign: extractedData.campaign }),
-                ...(extractedData.source && { source: extractedData.source })
+                ...(extractedData.source && { source: extractedData.source }),
+                ...(extractedData.product && { produto_interesse: extractedData.product }),
+                ...(extractedData.quantity && { quantidade_estimada: extractedData.quantity }),
+                ...(extractedData.prazo && { prazo_compra: extractedData.prazo }),
+                ultima_interacao: new Date().toISOString()
             });
+
+            // Calcula lead score após atualização
+            try {
+                await leadScoringService.scoreContact(phoneNumber);
+            } catch (scoreError) {
+                logger.warn('Erro ao calcular score:', scoreError);
+            }
             // Se coleta completa, processa lead
             if (extractedData.ready) {
                 logger.info('✅ Coleta completa para', phoneNumber);

@@ -6,6 +6,7 @@ const path = require('path');
 const logger = require('../utils/logger');
 const marciaAgentService = require('./marciaAgentService');
 const knowledgeBaseService = require('./knowledgeBaseService');
+const databaseService = require('./databaseService');
 
 /**
  * Serviço de integração com WhatsApp (API não oficial)
@@ -129,12 +130,25 @@ class WhatsAppService {
 
                         // Remove arquivo temporário
                         fs.unlinkSync(filePath);
+
+                        // Marca que recebeu áudio
+                        await databaseService.updateContact(phoneNumber, {
+                            audio_recebido: true
+                        });
                     }
                 } catch (error) {
                     logger.error('Erro ao processar áudio:', error);
                     await message.reply('Tive um problema para ouvir seu áudio 😔 Pode escrever?');
                     return;
                 }
+            }
+
+            // Incrementa contador de mensagens
+            const contact = await databaseService.getContact(phoneNumber);
+            if (contact) {
+                await databaseService.updateContact(phoneNumber, {
+                    total_mensagens: (contact.total_mensagens || 0) + 1
+                });
             }
 
             // Envia para o agente Márcia processar
@@ -153,6 +167,11 @@ class WhatsAppService {
                 // Envia o arquivo
                 const catalogPath = knowledgeBaseService.getCatalogPath();
                 await this.sendFile(phoneNumber, catalogPath, 'Aqui está o nosso catálogo! 📘');
+
+                // Marca que enviou catálogo
+                await databaseService.updateContact(phoneNumber, {
+                    catalogo_enviado: true
+                });
             } else if (response) {
                 await message.reply(response);
                 logger.info(`📤 Resposta enviada para ${phoneNumber}`);

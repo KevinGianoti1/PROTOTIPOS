@@ -1,13 +1,16 @@
-// Dashboard JavaScript
+// Dashboard JavaScript - Phase 1 Enhanced
 let leadsChart = null;
 let originChart = null;
+let funnelChart = null;
+let scoreChart = null;
+let cnaeChart = null;
+let productChart = null;
+let geoChart = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadOrigins();
-    loadSources();
     updateDashboard();
     // Refresh dashboard every 30 seconds
-    setTimeout(() => setInterval(updateDashboard, 30000), 0);
+    setInterval(updateDashboard, 30000);
 });
 
 async function loadOrigins() {
@@ -15,7 +18,6 @@ async function loadOrigins() {
         const res = await fetch('/api/dashboard/origins');
         const data = await res.json();
         const select = document.getElementById('originSelect');
-        // Keep the default "Todas" option
         select.innerHTML = '<option value="">Todas</option>';
         data.origins.forEach(orig => {
             const opt = document.createElement('option');
@@ -33,7 +35,6 @@ async function loadSources() {
         const res = await fetch('/api/dashboard/sources');
         const data = await res.json();
         const select = document.getElementById('sourceSelect');
-        // Keep the default "Todas" option
         select.innerHTML = '<option value="">Todas</option>';
         data.sources.forEach(src => {
             const opt = document.createElement('option');
@@ -50,6 +51,7 @@ async function updateDashboard() {
     try {
         await Promise.all([
             updateStats(),
+            updateAdvancedStats(),
             updateCharts(),
             updateRecentLeads()
         ]);
@@ -58,6 +60,7 @@ async function updateDashboard() {
     }
 }
 
+// Original Stats
 async function updateStats() {
     const res = await fetch('/api/dashboard/stats');
     const data = await res.json();
@@ -70,7 +73,45 @@ async function updateStats() {
     }
 }
 
+// Phase 1 - Advanced Stats
+async function updateAdvancedStats() {
+    try {
+        const res = await fetch('/api/dashboard/advanced-stats');
+        const data = await res.json();
+
+        // Update KPIs
+        document.getElementById('kpi-avg-time').textContent = `${data.avgQualificationTime}h`;
+        document.getElementById('kpi-response-rate').textContent = `${data.responseRate}%`;
+        document.getElementById('kpi-avg-ticket').textContent = `R$ ${data.avgTicket}`;
+        document.getElementById('kpi-catalogs').textContent = data.catalogsSent;
+
+        // Update temperature distribution
+        const tempData = data.byTemperature;
+        const quente = tempData.find(t => t.name === 'Quente')?.count || 0;
+        const morno = tempData.find(t => t.name === 'Morno')?.count || 0;
+        const frio = tempData.find(t => t.name === 'Frio')?.count || 0;
+
+        document.getElementById('temp-hot').textContent = quente;
+        document.getElementById('temp-warm').textContent = morno;
+        document.getElementById('temp-cold').textContent = frio;
+    } catch (e) {
+        console.error('Erro ao carregar stats avançadas:', e);
+    }
+}
+
 async function updateCharts() {
+    // Original charts
+    await updateLeadsChart();
+
+    // Phase 1 new charts
+    await updateFunnelChart();
+    await updateScoreChart();
+    await updateCNAEChart();
+    await updateProductChart();
+    await updateGeoChart();
+}
+
+async function updateLeadsChart() {
     const res = await fetch('/api/dashboard/chart');
     const data = await res.json();
     const ctx = document.getElementById('leadsChart').getContext('2d');
@@ -82,7 +123,7 @@ async function updateCharts() {
             datasets: [{
                 label: 'Leads',
                 data: data.map(d => d.count),
-                backgroundColor: '#FF6B00',
+                backgroundColor: '#FF9000',
                 borderRadius: 4
             }]
         },
@@ -91,8 +132,8 @@ async function updateCharts() {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#9CA3AF' } },
-                x: { grid: { display: false }, ticks: { color: '#9CA3AF' } }
+                y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#A8A8B3' } },
+                x: { grid: { display: false }, ticks: { color: '#A8A8B3' } }
             }
         }
     });
@@ -107,16 +148,179 @@ function updateOriginChart(data) {
             labels: data.map(d => d.name),
             datasets: [{
                 data: data.map(d => d.count),
-                backgroundColor: ['#FF6B00', '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B'],
+                backgroundColor: ['#FF9000', '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B'],
                 borderWidth: 0
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'right', labels: { color: '#9CA3AF' } } }
+            plugins: { legend: { position: 'right', labels: { color: '#A8A8B3' } } }
         }
     });
+}
+
+async function updateFunnelChart() {
+    try {
+        const res = await fetch('/api/dashboard/funnel');
+        const data = await res.json();
+        const ctx = document.getElementById('funnelChart').getContext('2d');
+        if (funnelChart) funnelChart.destroy();
+        funnelChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.stage),
+                datasets: [{
+                    label: 'Leads',
+                    data: data.map(d => d.count),
+                    backgroundColor: ['#60A5FA', '#FBA94C', '#04D361'],
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#A8A8B3' } },
+                    y: { grid: { display: false }, ticks: { color: '#A8A8B3' } }
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Erro ao carregar funil:', e);
+    }
+}
+
+async function updateScoreChart() {
+    try {
+        const res = await fetch('/api/dashboard/lead-score-distribution');
+        const data = await res.json();
+        const ctx = document.getElementById('scoreChart').getContext('2d');
+        if (scoreChart) scoreChart.destroy();
+        scoreChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.range),
+                datasets: [{
+                    label: 'Leads',
+                    data: data.map(d => d.count),
+                    backgroundColor: '#FF9000',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#A8A8B3' } },
+                    x: { grid: { display: false }, ticks: { color: '#A8A8B3' } }
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Erro ao carregar distribuição de scores:', e);
+    }
+}
+
+async function updateCNAEChart() {
+    try {
+        const res = await fetch('/api/dashboard/top-cnaes');
+        const data = await res.json();
+        const ctx = document.getElementById('cnaeChart').getContext('2d');
+        if (cnaeChart) cnaeChart.destroy();
+        cnaeChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.name.substring(0, 30) + '...'),
+                datasets: [{
+                    label: 'Leads',
+                    data: data.map(d => d.count),
+                    backgroundColor: '#3B82F6',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#A8A8B3' } },
+                    y: { grid: { display: false }, ticks: { color: '#A8A8B3' } }
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Erro ao carregar top CNAEs:', e);
+    }
+}
+
+async function updateProductChart() {
+    try {
+        const res = await fetch('/api/dashboard/top-products');
+        const data = await res.json();
+        const ctx = document.getElementById('productChart').getContext('2d');
+        if (productChart) productChart.destroy();
+        productChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.name),
+                datasets: [{
+                    label: 'Leads',
+                    data: data.map(d => d.count),
+                    backgroundColor: '#10B981',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#A8A8B3' } },
+                    y: { grid: { display: false }, ticks: { color: '#A8A8B3' } }
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Erro ao carregar top produtos:', e);
+    }
+}
+
+async function updateGeoChart() {
+    try {
+        const res = await fetch('/api/dashboard/geographic');
+        const data = await res.json();
+        const ctx = document.getElementById('geoChart').getContext('2d');
+        if (geoChart) geoChart.destroy();
+        geoChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.name),
+                datasets: [{
+                    label: 'Leads',
+                    data: data.map(d => d.count),
+                    backgroundColor: '#8B5CF6',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#A8A8B3' } },
+                    x: { grid: { display: false }, ticks: { color: '#A8A8B3' } }
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Erro ao carregar distribuição geográfica:', e);
+    }
 }
 
 async function updateRecentLeads() {
@@ -128,7 +332,7 @@ async function updateRecentLeads() {
 async function applyFilters() {
     const origin = document.getElementById('originSelect').value;
     const source = document.getElementById('sourceSelect').value;
-    const campaign = document.getElementById('campaignInput').value;
+    const campaign = document.getElementById('campaignSelect').value;
     const stage = document.getElementById('stageSelect').value;
     const params = new URLSearchParams();
     if (origin) params.append('origin', origin);
@@ -141,18 +345,48 @@ async function applyFilters() {
 }
 
 function renderTable(leads) {
-    const tbody = document.getElementById('leads-table-body');
+    const tbody = document.getElementById('leadsTableBody');
+    if (!leads || leads.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Nenhum lead encontrado</td></tr>';
+        return;
+    }
+
     tbody.innerHTML = leads.map(lead => `
         <tr>
-            <td>${new Date(lead.created_at).toLocaleDateString('pt-BR')} ${new Date(lead.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</td>
-            <td><div class="font-medium">${lead.name || 'Desconhecido'}</div></td>
+            <td>${lead.name || lead.razao_social || 'Desconhecido'}</td>
             <td>${lead.phone}</td>
-            <td>${lead.origin || '-'}</td>
-            <td>${lead.source || '-'}</td>
-            <td>${lead.campaign || '-'}</td>
+            <td>${lead.cidade && lead.estado ? `${lead.cidade}/${lead.estado}` : '-'}</td>
+            <td>${lead.cnae_descricao ? lead.cnae_descricao.substring(0, 25) + '...' : '-'}</td>
+            <td>${formatScore(lead.lead_score)}</td>
+            <td>${formatTemperature(lead.temperatura)}</td>
             <td><span class="badge badge-${lead.stage}">${formatStage(lead.stage)}</span></td>
+            <td>${formatDateTime(lead.created_at)}</td>
         </tr>
     `).join('');
+}
+
+function formatScore(score) {
+    if (!score) return '-';
+    let className = 'score-low';
+    if (score >= 70) className = 'score-high';
+    else if (score >= 40) className = 'score-medium';
+    return `<span class="${className}">${score}</span>`;
+}
+
+function formatTemperature(temp) {
+    if (!temp) return '-';
+    const icons = {
+        'Quente': '🔥',
+        'Morno': '🟡',
+        'Frio': '❄️'
+    };
+    return `<span class="badge-${temp.toLowerCase()}">${icons[temp] || ''} ${temp}</span>`;
+}
+
+function formatDateTime(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 function formatDate(dateStr) {
@@ -162,7 +396,7 @@ function formatDate(dateStr) {
 
 function formatStage(stage) {
     const map = {
-        'initial': 'Em Aberto',
+        'initial': 'Em Andamento',
         'collecting': 'Coletando',
         'completed': 'Qualificado',
         'disqualified': 'Desqualificado'
