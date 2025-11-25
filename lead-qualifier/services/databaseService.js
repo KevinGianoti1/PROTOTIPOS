@@ -287,42 +287,42 @@ class DatabaseService {
 
     async getRecentLeads(limit = 10) {
         return await this.db.all(`
-            SELECT 
-                name, 
+            SELECT
+            name,
                 razao_social,
-                phone, 
+                phone,
                 cidade,
                 estado,
                 cnae_descricao,
                 lead_score,
                 temperatura,
-                stage, 
-                origin, 
-                campaign, 
-                source, 
+                stage,
+                origin,
+                campaign,
+                source,
                 created_at 
             FROM contacts 
-            ORDER BY created_at DESC 
+            ORDER BY created_at DESC
             LIMIT ?
-        `, [limit]);
+                `, [limit]);
     }
 
     async getLeadsByFilter(filters = {}) {
-        let query = `SELECT 
-            name, 
-            razao_social,
-            phone, 
-            cidade,
-            estado,
-            cnae_descricao,
-            lead_score,
-            temperatura,
-            stage, 
-            origin, 
-            campaign, 
-            source, 
-            created_at 
-        FROM contacts WHERE 1=1`;
+        let query = `SELECT
+            name,
+                razao_social,
+                phone,
+                cidade,
+                estado,
+                cnae_descricao,
+                lead_score,
+                temperatura,
+                stage,
+                origin,
+                campaign,
+                source,
+                created_at 
+        FROM contacts WHERE 1 = 1`;
         const params = [];
 
         if (filters.origin) {
@@ -347,12 +347,12 @@ class DatabaseService {
 
         if (filters.cnae) {
             query += ' AND cnae_descricao LIKE ?';
-            params.push(`%${filters.cnae}%`);
+            params.push(`% ${filters.cnae}% `);
         }
 
         if (filters.product) {
             query += ' AND produto_interesse LIKE ?';
-            params.push(`%${filters.product}%`);
+            params.push(`% ${filters.product}% `);
         }
 
         if (filters.state) {
@@ -362,7 +362,7 @@ class DatabaseService {
 
         if (filters.city) {
             query += ' AND cidade LIKE ?';
-            params.push(`%${filters.city}%`);
+            params.push(`% ${filters.city}% `);
         }
 
         query += ' ORDER BY created_at DESC LIMIT 50';
@@ -397,18 +397,18 @@ class DatabaseService {
         const avgTicket = await this.db.get(`SELECT AVG(ticket_medio) as avg FROM contacts ${filterQuery} AND ticket_medio IS NOT NULL`, params);
 
         // Taxa de resposta (leads que enviaram mais de 1 mensagem)
-        const totalLeads = await this.db.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery}`, params);
+        const totalLeads = await this.db.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery} `, params);
         const activeLeads = await this.db.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery} AND total_mensagens > 1`, params);
         const responseRate = totalLeads.count > 0 ? ((activeLeads.count / totalLeads.count) * 100).toFixed(1) : 0;
 
         // Tempo médio de qualificação (em horas)
         const avgQualificationTime = await this.db.get(`
             SELECT AVG(
-                (julianday(updated_at) - julianday(created_at)) * 24
-            ) as avg_hours
+                    (julianday(updated_at) - julianday(created_at)) * 24
+                ) as avg_hours
             FROM contacts 
             ${filterQuery} AND stage = 'completed'
-        `, params);
+                `, params);
 
         // Catálogos enviados
         const catalogsSent = await this.db.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery} AND catalogo_enviado = 1`, params);
@@ -428,20 +428,20 @@ class DatabaseService {
     async getLeadScoreDistribution(filters = {}) {
         const { query: filterQuery, params } = this._buildFilterQuery(filters);
         const distribution = await this.db.all(`
-            SELECT 
-                CASE 
+            SELECT
+            CASE 
                     WHEN lead_score >= 80 THEN '80-100'
                     WHEN lead_score >= 60 THEN '60-79'
                     WHEN lead_score >= 40 THEN '40-59'
                     WHEN lead_score >= 20 THEN '20-39'
                     ELSE '0-19'
-                END as range,
+            END as range,
                 COUNT(*) as count
             FROM contacts
             ${filterQuery} AND lead_score IS NOT NULL
             GROUP BY range
             ORDER BY range DESC
-        `, params);
+                `, params);
         return distribution;
     }
 
@@ -452,9 +452,9 @@ class DatabaseService {
             FROM contacts 
             ${filterQuery} AND cnae_descricao IS NOT NULL 
             GROUP BY cnae_descricao 
-            ORDER BY count DESC 
+            ORDER BY count DESC
             LIMIT ?
-        `, [...params, limit]);
+                `, [...params, limit]);
         return result.map(r => ({ name: r.cnae_descricao, count: r.count }));
     }
 
@@ -465,9 +465,9 @@ class DatabaseService {
             FROM contacts 
             ${filterQuery} AND produto_interesse IS NOT NULL 
             GROUP BY produto_interesse 
-            ORDER BY count DESC 
+            ORDER BY count DESC
             LIMIT ?
-        `, [...params, limit]);
+                `, [...params, limit]);
         return result.map(r => ({ name: r.produto_interesse, count: r.count }));
     }
 
