@@ -27,6 +27,10 @@ class Logger {
         console.log(this.formatMessage(LOG_LEVELS.INFO, message, data));
     }
 
+    warn(message, data = null) {
+        console.warn(this.formatMessage(LOG_LEVELS.INFO, message, data));
+    }
+
     debug(message, data = null) {
         if (this.level === 'debug') {
             console.log(this.formatMessage(LOG_LEVELS.DEBUG, message, data));
