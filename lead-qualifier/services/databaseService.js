@@ -190,15 +190,74 @@ class DatabaseService {
         );
     }
 
+    // --- Helper para Filtros ---
+    _buildFilterQuery(filters = {}) {
+        let query = ' WHERE 1=1';
+        const params = [];
+
+        if (filters.origin) {
+            query += ' AND origin = ?';
+            params.push(filters.origin);
+        }
+        if (filters.source) {
+            query += ' AND source = ?';
+            params.push(filters.source);
+        }
+        if (filters.campaign) {
+            query += ' AND campaign = ?';
+            params.push(filters.campaign);
+        }
+        if (filters.stage) {
+            query += ' AND stage = ?';
+            params.push(filters.stage);
+        }
+        if (filters.cnae) {
+            query += ' AND cnae_descricao LIKE ?';
+            params.push(`%${filters.cnae}%`);
+        }
+        if (filters.product) {
+            query += ' AND produto_interesse LIKE ?';
+            params.push(`%${filters.product}%`);
+        }
+        if (filters.state) {
+            query += ' AND estado = ?';
+            params.push(filters.state);
+        }
+        if (filters.city) {
+            query += ' AND cidade LIKE ?';
+            params.push(`%${filters.city}%`);
+        }
+
+        // Date Range Filter
+        if (filters.start_date) {
+            query += ' AND date(created_at) >= date(?)';
+            params.push(filters.start_date);
+        }
+        if (filters.end_date) {
+            query += ' AND date(created_at) <= date(?)';
+            params.push(filters.end_date);
+        }
+
+        return { query, params };
+    }
+
     // --- Métodos de Analytics (Dashboard) ---
 
-    async getDashboardStats() {
-        const total = await this.db.get('SELECT COUNT(*) as count FROM contacts');
-        const qualified = await this.db.get("SELECT COUNT(*) as count FROM contacts WHERE stage = 'completed'");
-        const disqualified = await this.db.get("SELECT COUNT(*) as count FROM contacts WHERE stage = 'disqualified'");
+    async getDashboardStats(filters = {}) {
+        const { query: filterQuery, params } = this._buildFilterQuery(filters);
 
-        // Agrupamento por Origem
-        const byOrigin = await this.db.all('SELECT origin, COUNT(*) as count FROM contacts GROUP BY origin');
+        const total = await this.db.get(`SELECT COUNT(*) as count FROM contacts${filterQuery}`, params);
+
+        // For specific status counts, we need to append to the filter query
+        // Note: This assumes filterQuery starts with " WHERE 1=1"
+        const qualifiedQuery = `SELECT COUNT(*) as count FROM contacts${filterQuery} AND stage = 'completed'`;
+        const qualified = await this.db.get(qualifiedQuery, params);
+
+        const disqualifiedQuery = `SELECT COUNT(*) as count FROM contacts${filterQuery} AND stage = 'disqualified'`;
+        const disqualified = await this.db.get(disqualifiedQuery, params);
+
+        // Agrupamento por Origem (respeitando outros filtros)
+        const byOrigin = await this.db.all(`SELECT origin, COUNT(*) as count FROM contacts${filterQuery} GROUP BY origin`, params);
 
         const totalCount = total.count || 0;
         const qualifiedCount = qualified.count || 0;
@@ -323,21 +382,23 @@ class DatabaseService {
 
     // --- Métodos Avançados de Analytics (Fase 1) ---
 
-    async getAdvancedStats() {
+    async getAdvancedStats(filters = {}) {
+        const { query: filterQuery, params } = this._buildFilterQuery(filters);
+
         // Estatísticas por temperatura
         const byTemperature = await this.db.all(`
             SELECT temperatura, COUNT(*) as count 
             FROM contacts 
-            WHERE temperatura IS NOT NULL 
+            ${filterQuery} AND temperatura IS NOT NULL 
             GROUP BY temperatura
-        `);
+        `, params);
 
         // Ticket médio
-        const avgTicket = await this.db.get('SELECT AVG(ticket_medio) as avg FROM contacts WHERE ticket_medio IS NOT NULL');
+        const avgTicket = await this.db.get(`SELECT AVG(ticket_medio) as avg FROM contacts ${filterQuery} AND ticket_medio IS NOT NULL`, params);
 
         // Taxa de resposta (leads que enviaram mais de 1 mensagem)
-        const totalLeads = await this.db.get('SELECT COUNT(*) as count FROM contacts');
-        const activeLeads = await this.db.get('SELECT COUNT(*) as count FROM contacts WHERE total_mensagens > 1');
+        const totalLeads = await this.db.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery}`, params);
+        const activeLeads = await this.db.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery} AND total_mensagens > 1`, params);
         const responseRate = totalLeads.count > 0 ? ((activeLeads.count / totalLeads.count) * 100).toFixed(1) : 0;
 
         // Tempo médio de qualificação (em horas)
@@ -346,11 +407,11 @@ class DatabaseService {
                 (julianday(updated_at) - julianday(created_at)) * 24
             ) as avg_hours
             FROM contacts 
-            WHERE stage = 'completed'
-        `);
+            ${filterQuery} AND stage = 'completed'
+        `, params);
 
         // Catálogos enviados
-        const catalogsSent = await this.db.get('SELECT COUNT(*) as count FROM contacts WHERE catalogo_enviado = 1');
+        const catalogsSent = await this.db.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery} AND catalogo_enviado = 1`, params);
 
         return {
             byTemperature: byTemperature.map(t => ({
@@ -364,7 +425,8 @@ class DatabaseService {
         };
     }
 
-    async getLeadScoreDistribution() {
+    async getLeadScoreDistribution(filters = {}) {
+        const { query: filterQuery, params } = this._buildFilterQuery(filters);
         const distribution = await this.db.all(`
             SELECT 
                 CASE 
@@ -376,53 +438,58 @@ class DatabaseService {
                 END as range,
                 COUNT(*) as count
             FROM contacts
-            WHERE lead_score IS NOT NULL
+            ${filterQuery} AND lead_score IS NOT NULL
             GROUP BY range
             ORDER BY range DESC
-        `);
+        `, params);
         return distribution;
     }
 
-    async getTopCNAEs(limit = 5) {
+    async getTopCNAEs(limit = 5, filters = {}) {
+        const { query: filterQuery, params } = this._buildFilterQuery(filters);
         const result = await this.db.all(`
             SELECT cnae_descricao, COUNT(*) as count 
             FROM contacts 
-            WHERE cnae_descricao IS NOT NULL 
+            ${filterQuery} AND cnae_descricao IS NOT NULL 
             GROUP BY cnae_descricao 
             ORDER BY count DESC 
             LIMIT ?
-        `, [limit]);
+        `, [...params, limit]);
         return result.map(r => ({ name: r.cnae_descricao, count: r.count }));
     }
 
-    async getTopProducts(limit = 5) {
+    async getTopProducts(limit = 5, filters = {}) {
+        const { query: filterQuery, params } = this._buildFilterQuery(filters);
         const result = await this.db.all(`
             SELECT produto_interesse, COUNT(*) as count 
             FROM contacts 
-            WHERE produto_interesse IS NOT NULL 
+            ${filterQuery} AND produto_interesse IS NOT NULL 
             GROUP BY produto_interesse 
             ORDER BY count DESC 
             LIMIT ?
-        `, [limit]);
+        `, [...params, limit]);
         return result.map(r => ({ name: r.produto_interesse, count: r.count }));
     }
 
-    async getGeographicDistribution() {
+    async getGeographicDistribution(filters = {}) {
+        const { query: filterQuery, params } = this._buildFilterQuery(filters);
         const result = await this.db.all(`
             SELECT estado, COUNT(*) as count 
             FROM contacts 
-            WHERE estado IS NOT NULL 
+            ${filterQuery} AND estado IS NOT NULL 
             GROUP BY estado 
             ORDER BY count DESC 
             LIMIT 10
-        `);
+        `, params);
         return result.map(r => ({ name: r.estado, count: r.count }));
     }
 
-    async getFunnelData() {
-        const initial = await this.db.get("SELECT COUNT(*) as count FROM contacts WHERE stage = 'initial'");
-        const inProgress = await this.db.get("SELECT COUNT(*) as count FROM contacts WHERE total_mensagens > 3");
-        const qualified = await this.db.get("SELECT COUNT(*) as count FROM contacts WHERE stage = 'completed'");
+    async getFunnelData(filters = {}) {
+        const { query: filterQuery, params } = this._buildFilterQuery(filters);
+
+        const initial = await this.db.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery} AND stage = 'initial'`, params);
+        const inProgress = await this.db.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery} AND total_mensagens > 3`, params);
+        const qualified = await this.db.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery} AND stage = 'completed'`, params);
 
         return [
             { stage: 'Contato Inicial', count: initial.count || 0 },

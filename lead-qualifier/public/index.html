@@ -46,199 +46,179 @@
                 </div>
                 <div class="filter-group">
                     <label for="campaignSelect">Campanha</label>
-                    <select id="campaignSelect">
-                        <option value="">Todas</option>
-                        <option value="Google ADS">Google ADS</option>
-                        <option value="Tráfego Pago">Tráfego Pago</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="stageSelect">Status</label>
-                    <select id="stageSelect">
-                        <option value="">Todos</option>
-                        <option value="initial">Em Andamento</option>
-                        <option value="completed">Qualificado</option>
-                        <option value="disqualified">Desqualificado</option>
-                    </select>
-                </div>
-                <button class="btn-filter" onclick="applyFilters()">Aplicar Filtros</button>
-            </div>
-        </section>
+                    <section class="kpi-grid">
+                        <div class="card kpi-card">
+                            <h3>Total Leads</h3>
+                            <div class="value" id="kpi-total">0</div>
+                            <div class="trend">Total de atendimentos</div>
+                        </div>
+                        <div class="card kpi-card">
+                            <h3>Qualificados</h3>
+                            <div class="value text-success" id="kpi-qualified">0</div>
+                            <div class="trend">Enviados p/ RD Station</div>
+                        </div>
+                        <div class="card kpi-card">
+                            <h3>Desqualificados</h3>
+                            <div class="value text-danger" id="kpi-disqualified">0</div>
+                            <div class="trend">CNAE fora do perfil</div>
+                        </div>
+                        <div class="card kpi-card">
+                            <h3>Conversão</h3>
+                            <div class="value text-warning" id="kpi-conversion">0%</div>
+                            <div class="trend">Taxa de aproveitamento</div>
+                        </div>
+                    </section>
 
-        <!-- KPI Cards - Row 1 (Original) -->
-        <section class="kpi-grid">
-            <div class="card kpi-card">
-                <h3>Total Leads</h3>
-                <div class="value" id="kpi-total">0</div>
-                <div class="trend">Total de atendimentos</div>
-            </div>
-            <div class="card kpi-card">
-                <h3>Qualificados</h3>
-                <div class="value text-success" id="kpi-qualified">0</div>
-                <div class="trend">Enviados p/ RD Station</div>
-            </div>
-            <div class="card kpi-card">
-                <h3>Desqualificados</h3>
-                <div class="value text-danger" id="kpi-disqualified">0</div>
-                <div class="trend">CNAE fora do perfil</div>
-            </div>
-            <div class="card kpi-card">
-                <h3>Conversão</h3>
-                <div class="value text-warning" id="kpi-conversion">0%</div>
-                <div class="trend">Taxa de aproveitamento</div>
-            </div>
-        </section>
+                    <!-- KPI Cards - Row 2 (New Phase 1) -->
+                    <section class="kpi-grid">
+                        <div class="card kpi-card">
+                            <h3>Tempo Médio</h3>
+                            <div class="value" id="kpi-avg-time">0h</div>
+                            <div class="trend">Qualificação de leads</div>
+                        </div>
+                        <div class="card kpi-card">
+                            <h3>Taxa de Resposta</h3>
+                            <div class="value text-info" id="kpi-response-rate">0%</div>
+                            <div class="trend">Leads que respondem</div>
+                        </div>
+                        <div class="card kpi-card">
+                            <h3>Ticket Médio</h3>
+                            <div class="value text-success" id="kpi-avg-ticket">R$ 0</div>
+                            <div class="trend">Valor estimado</div>
+                        </div>
+                        <div class="card kpi-card">
+                            <h3>Catálogos Enviados</h3>
+                            <div class="value text-warning" id="kpi-catalogs">0</div>
+                            <div class="trend">PDFs compartilhados</div>
+                        </div>
+                    </section>
 
-        <!-- KPI Cards - Row 2 (New Phase 1) -->
-        <section class="kpi-grid">
-            <div class="card kpi-card">
-                <h3>Tempo Médio</h3>
-                <div class="value" id="kpi-avg-time">0h</div>
-                <div class="trend">Qualificação de leads</div>
-            </div>
-            <div class="card kpi-card">
-                <h3>Taxa de Resposta</h3>
-                <div class="value text-info" id="kpi-response-rate">0%</div>
-                <div class="trend">Leads que respondem</div>
-            </div>
-            <div class="card kpi-card">
-                <h3>Ticket Médio</h3>
-                <div class="value text-success" id="kpi-avg-ticket">R$ 0</div>
-                <div class="trend">Valor estimado</div>
-            </div>
-            <div class="card kpi-card">
-                <h3>Catálogos Enviados</h3>
-                <div class="value text-warning" id="kpi-catalogs">0</div>
-                <div class="trend">PDFs compartilhados</div>
-            </div>
-        </section>
+                    <!-- Temperature Distribution -->
+                    <section class="card temperature-section">
+                        <div class="card-header">
+                            <h2>Leads por Temperatura</h2>
+                        </div>
+                        <div class="temperature-grid" id="temperature-grid">
+                            <div class="temp-card temp-hot">
+                                <div class="temp-icon">🔥</div>
+                                <div class="temp-label">Quentes</div>
+                                <div class="temp-value" id="temp-hot">0</div>
+                            </div>
+                            <div class="temp-card temp-warm">
+                                <div class="temp-icon">🟡</div>
+                                <div class="temp-label">Mornos</div>
+                                <div class="temp-value" id="temp-warm">0</div>
+                            </div>
+                            <div class="temp-card temp-cold">
+                                <div class="temp-icon">❄️</div>
+                                <div class="temp-label">Frios</div>
+                                <div class="temp-value" id="temp-cold">0</div>
+                            </div>
+                        </div>
+                    </section>
 
-        <!-- Temperature Distribution -->
-        <section class="card temperature-section">
-            <div class="card-header">
-                <h2>Leads por Temperatura</h2>
-            </div>
-            <div class="temperature-grid" id="temperature-grid">
-                <div class="temp-card temp-hot">
-                    <div class="temp-icon">🔥</div>
-                    <div class="temp-label">Quentes</div>
-                    <div class="temp-value" id="temp-hot">0</div>
-                </div>
-                <div class="temp-card temp-warm">
-                    <div class="temp-icon">🟡</div>
-                    <div class="temp-label">Mornos</div>
-                    <div class="temp-value" id="temp-warm">0</div>
-                </div>
-                <div class="temp-card temp-cold">
-                    <div class="temp-icon">❄️</div>
-                    <div class="temp-label">Frios</div>
-                    <div class="temp-value" id="temp-cold">0</div>
-                </div>
-            </div>
-        </section>
+                    <!-- Charts Grid - Row 1 (Original) -->
+                    <section class="charts-grid">
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h2>Volume de Atendimentos</h2>
+                                <span class="period">Últimos 7 dias</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="leadsChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h2>Leads por Origem</h2>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="originChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
 
-        <!-- Charts Grid - Row 1 (Original) -->
-        <section class="charts-grid">
-            <div class="card chart-card">
-                <div class="card-header">
-                    <h2>Volume de Atendimentos</h2>
-                    <span class="period">Últimos 7 dias</span>
-                </div>
-                <div class="chart-container">
-                    <canvas id="leadsChart"></canvas>
-                </div>
-            </div>
-            <div class="card chart-card">
-                <div class="card-header">
-                    <h2>Leads por Origem</h2>
-                </div>
-                <div class="chart-container">
-                    <canvas id="originChart"></canvas>
-                </div>
-            </div>
-        </section>
+                    <!-- Charts Grid - Row 2 (New Phase 1) -->
+                    <section class="charts-grid">
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h2>Funil de Conversão</h2>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="funnelChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h2>Distribuição de Lead Score</h2>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="scoreChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
 
-        <!-- Charts Grid - Row 2 (New Phase 1) -->
-        <section class="charts-grid">
-            <div class="card chart-card">
-                <div class="card-header">
-                    <h2>Funil de Conversão</h2>
-                </div>
-                <div class="chart-container">
-                    <canvas id="funnelChart"></canvas>
-                </div>
-            </div>
-            <div class="card chart-card">
-                <div class="card-header">
-                    <h2>Distribuição de Lead Score</h2>
-                </div>
-                <div class="chart-container">
-                    <canvas id="scoreChart"></canvas>
-                </div>
-            </div>
-        </section>
+                    <!-- Charts Grid - Row 3 (New Phase 1) -->
+                    <section class="charts-grid">
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h2>Top 5 CNAEs</h2>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="cnaeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h2>Top 5 Produtos</h2>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="productChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
 
-        <!-- Charts Grid - Row 3 (New Phase 1) -->
-        <section class="charts-grid">
-            <div class="card chart-card">
-                <div class="card-header">
-                    <h2>Top 5 CNAEs</h2>
-                </div>
-                <div class="chart-container">
-                    <canvas id="cnaeChart"></canvas>
-                </div>
-            </div>
-            <div class="card chart-card">
-                <div class="card-header">
-                    <h2>Top 5 Produtos</h2>
-                </div>
-                <div class="chart-container">
-                    <canvas id="productChart"></canvas>
-                </div>
-            </div>
-        </section>
+                    <!-- Geographic Distribution -->
+                    <section class="card chart-card">
+                        <div class="card-header">
+                            <h2>Distribuição Geográfica</h2>
+                            <span class="period">Top 10 Estados</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="geoChart"></canvas>
+                        </div>
+                    </section>
 
-        <!-- Geographic Distribution -->
-        <section class="card chart-card">
-            <div class="card-header">
-                <h2>Distribuição Geográfica</h2>
-                <span class="period">Top 10 Estados</span>
-            </div>
-            <div class="chart-container">
-                <canvas id="geoChart"></canvas>
-            </div>
-        </section>
-
-        <!-- Recent Leads Table -->
-        <section class="card table-card">
-            <div class="card-header">
-                <h2>Últimos Leads</h2>
-                <button class="btn-refresh" onclick="updateDashboard()">🔄</button>
-            </div>
-            <div class="table-container">
-                <table id="leadsTable">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Telefone</th>
-                            <th>Cidade/UF</th>
-                            <th>CNAE</th>
-                            <th>Score</th>
-                            <th>Temp</th>
-                            <th>Status</th>
-                            <th>Data</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leadsTableBody">
-                        <tr>
-                            <td colspan="8" style="text-align: center;">Carregando...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </div>
-    <script src="js/dashboard.js"></script>
+                    <!-- Recent Leads Table -->
+                    <section class="card table-card">
+                        <div class="card-header">
+                            <h2>Últimos Leads</h2>
+                            <button class="btn-refresh" onclick="updateDashboard()">🔄</button>
+                        </div>
+                        <div class="table-container">
+                            <table id="leadsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Telefone</th>
+                                        <th>Cidade/UF</th>
+                                        <th>CNAE</th>
+                                        <th>Score</th>
+                                        <th>Temp</th>
+                                        <th>Status</th>
+                                        <th>Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leadsTableBody">
+                                    <tr>
+                                        <td colspan="8" style="text-align: center;">Carregando...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+                <script src="js/dashboard.js"></script>
 </body>
 
 </html>

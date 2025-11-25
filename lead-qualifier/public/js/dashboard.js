@@ -47,13 +47,13 @@ async function loadSources() {
     }
 }
 
-async function updateDashboard() {
+async function updateDashboard(filters = {}) {
     try {
         await Promise.all([
-            updateStats(),
-            updateAdvancedStats(),
-            updateCharts(),
-            updateRecentLeads()
+            updateStats(filters),
+            updateAdvancedStats(filters),
+            updateCharts(filters),
+            updateRecentLeads(filters)
         ]);
     } catch (error) {
         console.error('Erro ao atualizar dashboard:', error);
@@ -61,22 +61,24 @@ async function updateDashboard() {
 }
 
 // Original Stats
-async function updateStats() {
-    const res = await fetch('/api/dashboard/stats');
+async function updateStats(filters = {}) {
+    const params = new URLSearchParams(filters);
+    const res = await fetch(`/api/dashboard/stats?${params}`);
     const data = await res.json();
     document.getElementById('kpi-total').textContent = data.total;
     document.getElementById('kpi-qualified').textContent = data.qualified;
     document.getElementById('kpi-disqualified').textContent = data.disqualified;
     document.getElementById('kpi-conversion').textContent = `${data.conversionRate}%`;
     if (data.byOrigin) {
-        updateOriginChart(data.byOrigin);
+        updateOriginChart(data.byOrigin, filters);
     }
 }
 
 // Phase 1 - Advanced Stats
-async function updateAdvancedStats() {
+async function updateAdvancedStats(filters = {}) {
     try {
-        const res = await fetch('/api/dashboard/advanced-stats');
+        const params = new URLSearchParams(filters);
+        const res = await fetch(`/api/dashboard/advanced-stats?${params}`);
         const data = await res.json();
 
         // Update KPIs
@@ -99,20 +101,21 @@ async function updateAdvancedStats() {
     }
 }
 
-async function updateCharts() {
+async function updateCharts(filters = {}) {
     // Original charts
-    await updateLeadsChart();
+    await updateLeadsChart(filters);
 
     // Phase 1 new charts
-    await updateFunnelChart();
-    await updateScoreChart();
-    await updateCNAEChart();
-    await updateProductChart();
-    await updateGeoChart();
+    await updateFunnelChart(filters);
+    await updateScoreChart(filters);
+    await updateCNAEChart(filters);
+    await updateProductChart(filters);
+    await updateGeoChart(filters);
 }
 
-async function updateLeadsChart() {
-    const res = await fetch('/api/dashboard/chart');
+async function updateLeadsChart(filters = {}) {
+    const params = new URLSearchParams(filters);
+    const res = await fetch(`/api/dashboard/chart?${params}`);
     const data = await res.json();
     const ctx = document.getElementById('leadsChart').getContext('2d');
     if (leadsChart) leadsChart.destroy();
@@ -139,7 +142,7 @@ async function updateLeadsChart() {
     });
 }
 
-function updateOriginChart(data) {
+function updateOriginChart(data, currentFilters = {}) {
     const ctx = document.getElementById('originChart').getContext('2d');
     if (originChart) originChart.destroy();
     originChart = new Chart(ctx, {
@@ -165,14 +168,15 @@ function updateOriginChart(data) {
             const index = points[0].index;
             const selectedOrigin = data.map(d => d.name)[index];
             document.getElementById('originSelect').value = selectedOrigin;
-            applyFilters({ origin: selectedOrigin });
+            applyFilters({ ...currentFilters, origin: selectedOrigin });
         }
     };
 }
 
-async function updateFunnelChart() {
+async function updateFunnelChart(filters = {}) {
     try {
-        const res = await fetch('/api/dashboard/funnel');
+        const params = new URLSearchParams(filters);
+        const res = await fetch(`/api/dashboard/funnel?${params}`);
         const data = await res.json();
         const ctx = document.getElementById('funnelChart').getContext('2d');
         if (funnelChart) funnelChart.destroy();
@@ -200,7 +204,7 @@ async function updateFunnelChart() {
                     if (elements.length > 0) {
                         const index = elements[0].index;
                         const stage = data[index].stage;
-                        applyFilters({ stage });
+                        applyFilters({ ...filters, stage });
                     }
                 }
             }
@@ -210,9 +214,10 @@ async function updateFunnelChart() {
     }
 }
 
-async function updateScoreChart() {
+async function updateScoreChart(filters = {}) {
     try {
-        const res = await fetch('/api/dashboard/lead-score-distribution');
+        const params = new URLSearchParams(filters);
+        const res = await fetch(`/api/dashboard/lead-score-distribution?${params}`);
         const data = await res.json();
         const ctx = document.getElementById('scoreChart').getContext('2d');
         if (scoreChart) scoreChart.destroy();
@@ -242,9 +247,10 @@ async function updateScoreChart() {
     }
 }
 
-async function updateCNAEChart() {
+async function updateCNAEChart(filters = {}) {
     try {
-        const res = await fetch('/api/dashboard/top-cnaes');
+        const params = new URLSearchParams(filters);
+        const res = await fetch(`/api/dashboard/top-cnaes?${params}`);
         const data = await res.json();
         const ctx = document.getElementById('cnaeChart').getContext('2d');
         if (cnaeChart) cnaeChart.destroy();
@@ -272,7 +278,7 @@ async function updateCNAEChart() {
                     if (elements.length > 0) {
                         const index = elements[0].index;
                         const cnae = data[index].name;
-                        applyFilters({ cnae });
+                        applyFilters({ ...filters, cnae });
                     }
                 }
             }
@@ -282,9 +288,10 @@ async function updateCNAEChart() {
     }
 }
 
-async function updateProductChart() {
+async function updateProductChart(filters = {}) {
     try {
-        const res = await fetch('/api/dashboard/top-products');
+        const params = new URLSearchParams(filters);
+        const res = await fetch(`/api/dashboard/top-products?${params}`);
         const data = await res.json();
         const ctx = document.getElementById('productChart').getContext('2d');
         if (productChart) productChart.destroy();
@@ -312,7 +319,7 @@ async function updateProductChart() {
                     if (elements.length > 0) {
                         const index = elements[0].index;
                         const product = data[index].name;
-                        applyFilters({ product });
+                        applyFilters({ ...filters, product });
                     }
                 }
             }
@@ -322,9 +329,10 @@ async function updateProductChart() {
     }
 }
 
-async function updateGeoChart() {
+async function updateGeoChart(filters = {}) {
     try {
-        const res = await fetch('/api/dashboard/geographic');
+        const params = new URLSearchParams(filters);
+        const res = await fetch(`/api/dashboard/geographic?${params}`);
         const data = await res.json();
         const ctx = document.getElementById('geoChart').getContext('2d');
         if (geoChart) geoChart.destroy();
@@ -351,7 +359,7 @@ async function updateGeoChart() {
                     if (elements.length > 0) {
                         const index = elements[0].index;
                         const state = data[index].name;
-                        applyFilters({ state });
+                        applyFilters({ ...filters, state });
                     }
                 }
             }
@@ -361,8 +369,9 @@ async function updateGeoChart() {
     }
 }
 
-async function updateRecentLeads() {
-    const res = await fetch('/api/dashboard/recent');
+async function updateRecentLeads(filters = {}) {
+    const params = new URLSearchParams(filters);
+    const res = await fetch(`/api/dashboard/filter?${params}`);
     const leads = await res.json();
     renderTable(leads);
 }
@@ -383,24 +392,24 @@ async function applyFilters(overrides = {}) {
         campaign = overrides.campaign || document.getElementById('campaignSelect').value;
     }
     const stage = overrides.stage || document.getElementById('stageSelect').value;
+    const start_date = overrides.start_date || document.getElementById('startDate').value;
+    const end_date = overrides.end_date || document.getElementById('endDate').value;
 
-    const params = new URLSearchParams();
-    if (origin) params.append('origin', origin);
-    if (source) params.append('source', source);
-    if (campaign) params.append('campaign', campaign);
-    if (stage) params.append('stage', stage);
+    const filters = {
+        origin,
+        source,
+        campaign,
+        stage,
+        start_date,
+        end_date,
+        ...overrides // Overrides take precedence (e.g. click on chart)
+    };
 
-    // Add extra filters from overrides
-    if (overrides.cnae) params.append('cnae', overrides.cnae);
-    if (overrides.product) params.append('product', overrides.product);
-    if (overrides.state) params.append('state', overrides.state);
-    if (overrides.city) params.append('city', overrides.city);
+    // Remove empty filters
+    Object.keys(filters).forEach(key => filters[key] === undefined || filters[key] === '' ? delete filters[key] : {});
 
-    const queryString = params.toString();
-    const url = queryString ? `/api/dashboard/filter?${queryString}` : '/api/dashboard/filter';
-    const res = await fetch(url);
-    const leads = await res.json();
-    renderTable(leads);
+    // Update global dashboard with all filters
+    await updateDashboard(filters);
 }
 
 function renderTable(leads) {

@@ -69,7 +69,19 @@ app.get('/api/cnaes-permitidos', (req, res) => {
 // Dashboard statistics
 app.get('/api/dashboard/stats', async (req, res) => {
     try {
-        const stats = await databaseService.getDashboardStats();
+        const filters = {
+            origin: req.query.origin || undefined,
+            source: req.query.source || undefined,
+            campaign: req.query.campaign || undefined,
+            stage: req.query.stage || undefined,
+            cnae: req.query.cnae || undefined,
+            product: req.query.product || undefined,
+            state: req.query.state || undefined,
+            city: req.query.city || undefined,
+            start_date: req.query.start_date || undefined,
+            end_date: req.query.end_date || undefined
+        };
+        const stats = await databaseService.getDashboardStats(filters);
         res.json(stats);
     } catch (error) {
         logger.error('Erro ao buscar stats:', error);
@@ -132,7 +144,9 @@ app.get('/api/dashboard/filter', async (req, res) => {
             cnae: req.query.cnae || undefined,
             product: req.query.product || undefined,
             state: req.query.state || undefined,
-            city: req.query.city || undefined
+            city: req.query.city || undefined,
+            start_date: req.query.start_date || undefined,
+            end_date: req.query.end_date || undefined
         };
         const leads = await databaseService.getLeadsByFilter(filters);
         res.json(leads);
@@ -147,7 +161,19 @@ app.get('/api/dashboard/filter', async (req, res) => {
 // Advanced statistics
 app.get('/api/dashboard/advanced-stats', async (req, res) => {
     try {
-        const stats = await databaseService.getAdvancedStats();
+        const filters = {
+            origin: req.query.origin || undefined,
+            source: req.query.source || undefined,
+            campaign: req.query.campaign || undefined,
+            stage: req.query.stage || undefined,
+            cnae: req.query.cnae || undefined,
+            product: req.query.product || undefined,
+            state: req.query.state || undefined,
+            city: req.query.city || undefined,
+            start_date: req.query.start_date || undefined,
+            end_date: req.query.end_date || undefined
+        };
+        const stats = await databaseService.getAdvancedStats(filters);
         res.json(stats);
     } catch (error) {
         logger.error('Erro ao buscar estatísticas avançadas:', error);
@@ -158,7 +184,19 @@ app.get('/api/dashboard/advanced-stats', async (req, res) => {
 // Lead score distribution
 app.get('/api/dashboard/lead-score-distribution', async (req, res) => {
     try {
-        const distribution = await databaseService.getLeadScoreDistribution();
+        const filters = {
+            origin: req.query.origin || undefined,
+            source: req.query.source || undefined,
+            campaign: req.query.campaign || undefined,
+            stage: req.query.stage || undefined,
+            cnae: req.query.cnae || undefined,
+            product: req.query.product || undefined,
+            state: req.query.state || undefined,
+            city: req.query.city || undefined,
+            start_date: req.query.start_date || undefined,
+            end_date: req.query.end_date || undefined
+        };
+        const distribution = await databaseService.getLeadScoreDistribution(filters);
         res.json(distribution);
     } catch (error) {
         logger.error('Erro ao buscar distribuição de scores:', error);
@@ -170,7 +208,19 @@ app.get('/api/dashboard/lead-score-distribution', async (req, res) => {
 app.get('/api/dashboard/top-cnaes', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 5;
-        const topCNAEs = await databaseService.getTopCNAEs(limit);
+        const filters = {
+            origin: req.query.origin || undefined,
+            source: req.query.source || undefined,
+            campaign: req.query.campaign || undefined,
+            stage: req.query.stage || undefined,
+            cnae: req.query.cnae || undefined,
+            product: req.query.product || undefined,
+            state: req.query.state || undefined,
+            city: req.query.city || undefined,
+            start_date: req.query.start_date || undefined,
+            end_date: req.query.end_date || undefined
+        };
+        const topCNAEs = await databaseService.getTopCNAEs(limit, filters);
         res.json(topCNAEs);
     } catch (error) {
         logger.error('Erro ao buscar top CNAEs:', error);
@@ -182,7 +232,19 @@ app.get('/api/dashboard/top-cnaes', async (req, res) => {
 app.get('/api/dashboard/top-products', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 5;
-        const topProducts = await databaseService.getTopProducts(limit);
+        const filters = {
+            origin: req.query.origin || undefined,
+            source: req.query.source || undefined,
+            campaign: req.query.campaign || undefined,
+            stage: req.query.stage || undefined,
+            cnae: req.query.cnae || undefined,
+            product: req.query.product || undefined,
+            state: req.query.state || undefined,
+            city: req.query.city || undefined,
+            start_date: req.query.start_date || undefined,
+            end_date: req.query.end_date || undefined
+        };
+        const topProducts = await databaseService.getTopProducts(limit, filters);
         res.json(topProducts);
     } catch (error) {
         logger.error('Erro ao buscar top produtos:', error);
@@ -193,7 +255,19 @@ app.get('/api/dashboard/top-products', async (req, res) => {
 // Geographic distribution
 app.get('/api/dashboard/geographic', async (req, res) => {
     try {
-        const distribution = await databaseService.getGeographicDistribution();
+        const filters = {
+            origin: req.query.origin || undefined,
+            source: req.query.source || undefined,
+            campaign: req.query.campaign || undefined,
+            stage: req.query.stage || undefined,
+            cnae: req.query.cnae || undefined,
+            product: req.query.product || undefined,
+            state: req.query.state || undefined,
+            city: req.query.city || undefined,
+            start_date: req.query.start_date || undefined,
+            end_date: req.query.end_date || undefined
+        };
+        const distribution = await databaseService.getGeographicDistribution(filters);
         res.json(distribution);
     } catch (error) {
         logger.error('Erro ao buscar distribuição geográfica:', error);
@@ -204,7 +278,19 @@ app.get('/api/dashboard/geographic', async (req, res) => {
 // Funnel data
 app.get('/api/dashboard/funnel', async (req, res) => {
     try {
-        const funnelData = await databaseService.getFunnelData();
+        const filters = {
+            origin: req.query.origin || undefined,
+            source: req.query.source || undefined,
+            campaign: req.query.campaign || undefined,
+            stage: req.query.stage || undefined,
+            cnae: req.query.cnae || undefined,
+            product: req.query.product || undefined,
+            state: req.query.state || undefined,
+            city: req.query.city || undefined,
+            start_date: req.query.start_date || undefined,
+            end_date: req.query.end_date || undefined
+        };
+        const funnelData = await databaseService.getFunnelData(filters);
         res.json(funnelData);
     } catch (error) {
         logger.error('Erro ao buscar dados do funil:', error);
