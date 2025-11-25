@@ -112,13 +112,25 @@ async function createTestLead(index) {
     await databaseService.createContact(phone, {});
 
     // Dados básicos
+    // Dados básicos
+    const origin = randomItem(origens);
+    let source, campaign;
+
+    if (origin === 'Site') {
+        source = 'Site';
+        campaign = 'Google ADS';
+    } else {
+        source = 'Redes Sociais';
+        campaign = 'Tráfego Pago';
+    }
+
     const updates = {
         name: nome,
         email: generateEmail(nome),
         cnpj: `${randomInt(10, 99)}.${randomInt(100, 999)}.${randomInt(100, 999)}/0001-${randomInt(10, 99)}`,
-        origin: randomItem(origens),
-        source: randomItem(fontes),
-        campaign: randomBoolean() ? randomItem(campanhas) : null,
+        origin: origin,
+        source: source,
+        campaign: campaign,
 
         // Dados da empresa
         razao_social: empresa.razao,
@@ -177,6 +189,7 @@ async function runTests() {
 
         // Inicializa banco
         await databaseService.init();
+        await databaseService.clearAllContacts();
 
         // Cria 20 leads
         const leads = [];

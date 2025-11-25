@@ -286,6 +286,26 @@ class DatabaseService {
             params.push(filters.stage);
         }
 
+        if (filters.cnae) {
+            query += ' AND cnae_descricao LIKE ?';
+            params.push(`%${filters.cnae}%`);
+        }
+
+        if (filters.product) {
+            query += ' AND produto_interesse LIKE ?';
+            params.push(`%${filters.product}%`);
+        }
+
+        if (filters.state) {
+            query += ' AND estado = ?';
+            params.push(filters.state);
+        }
+
+        if (filters.city) {
+            query += ' AND cidade LIKE ?';
+            params.push(`%${filters.city}%`);
+        }
+
         query += ' ORDER BY created_at DESC LIMIT 50';
 
         return await this.db.all(query, params);
@@ -416,6 +436,15 @@ class DatabaseService {
             'UPDATE contacts SET lead_score = ?, temperatura = ?, updated_at = ? WHERE phone = ?',
             [score, temperatura, new Date().toISOString(), phone]
         );
+    }
+    async clearAllContacts() {
+        try {
+            await this.db.run('DELETE FROM contacts');
+            logger.info('🧹 Banco de dados limpo (tabela contacts)');
+        } catch (error) {
+            logger.error('Erro ao limpar contatos:', error);
+            throw error;
+        }
     }
 }
 

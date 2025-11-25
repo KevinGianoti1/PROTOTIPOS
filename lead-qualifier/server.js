@@ -128,7 +128,11 @@ app.get('/api/dashboard/filter', async (req, res) => {
             origin: req.query.origin || undefined,
             source: req.query.source || undefined,
             campaign: req.query.campaign || undefined,
-            stage: req.query.stage || undefined
+            stage: req.query.stage || undefined,
+            cnae: req.query.cnae || undefined,
+            product: req.query.product || undefined,
+            state: req.query.state || undefined,
+            city: req.query.city || undefined
         };
         const leads = await databaseService.getLeadsByFilter(filters);
         res.json(leads);

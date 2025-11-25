@@ -165,7 +165,7 @@ function updateOriginChart(data) {
             const index = points[0].index;
             const selectedOrigin = data.map(d => d.name)[index];
             document.getElementById('originSelect').value = selectedOrigin;
-            applyFilters();
+            applyFilters({ origin: selectedOrigin });
         }
     };
 }
@@ -195,6 +195,13 @@ async function updateFunnelChart() {
                 scales: {
                     x: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#A8A8B3' } },
                     y: { grid: { display: false }, ticks: { color: '#A8A8B3' } }
+                },
+                onClick: (evt, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const stage = data[index].stage;
+                        applyFilters({ stage });
+                    }
                 }
             }
         });
@@ -260,6 +267,13 @@ async function updateCNAEChart() {
                 scales: {
                     x: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#A8A8B3' } },
                     y: { grid: { display: false }, ticks: { color: '#A8A8B3' } }
+                },
+                onClick: (evt, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const cnae = data[index].name;
+                        applyFilters({ cnae });
+                    }
                 }
             }
         });
@@ -293,6 +307,13 @@ async function updateProductChart() {
                 scales: {
                     x: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#A8A8B3' } },
                     y: { grid: { display: false }, ticks: { color: '#A8A8B3' } }
+                },
+                onClick: (evt, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const product = data[index].name;
+                        applyFilters({ product });
+                    }
                 }
             }
         });
@@ -325,6 +346,13 @@ async function updateGeoChart() {
                 scales: {
                     y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#A8A8B3' } },
                     x: { grid: { display: false }, ticks: { color: '#A8A8B3' } }
+                },
+                onClick: (evt, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const state = data[index].name;
+                        applyFilters({ state });
+                    }
                 }
             }
         });
@@ -339,8 +367,8 @@ async function updateRecentLeads() {
     renderTable(leads);
 }
 
-async function applyFilters() {
-    const origin = document.getElementById('originSelect').value;
+async function applyFilters(overrides = {}) {
+    const origin = overrides.origin || document.getElementById('originSelect').value;
     // Determine linked source and campaign based on origin
     let source = '';
     let campaign = '';
@@ -351,15 +379,23 @@ async function applyFilters() {
         source = 'Redes Sociais';
         campaign = 'Tráfego Pago';
     } else {
-        source = document.getElementById('sourceSelect').value;
-        campaign = document.getElementById('campaignSelect').value;
+        source = overrides.source || document.getElementById('sourceSelect').value;
+        campaign = overrides.campaign || document.getElementById('campaignSelect').value;
     }
-    const stage = document.getElementById('stageSelect').value;
+    const stage = overrides.stage || document.getElementById('stageSelect').value;
+
     const params = new URLSearchParams();
     if (origin) params.append('origin', origin);
     if (source) params.append('source', source);
     if (campaign) params.append('campaign', campaign);
     if (stage) params.append('stage', stage);
+
+    // Add extra filters from overrides
+    if (overrides.cnae) params.append('cnae', overrides.cnae);
+    if (overrides.product) params.append('product', overrides.product);
+    if (overrides.state) params.append('state', overrides.state);
+    if (overrides.city) params.append('city', overrides.city);
+
     const queryString = params.toString();
     const url = queryString ? `/api/dashboard/filter?${queryString}` : '/api/dashboard/filter';
     const res = await fetch(url);
