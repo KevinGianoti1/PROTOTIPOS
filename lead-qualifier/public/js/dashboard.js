@@ -392,12 +392,17 @@ async function applyFilters(overrides = {}) {
         campaign = overrides.campaign || document.getElementById('campaignSelect').value;
     }
     const stage = overrides.stage || document.getElementById('stageSelect').value;
+    // Date range
+    const startDate = overrides.startDate || document.getElementById('startDate').value;
+    const endDate = overrides.endDate || document.getElementById('endDate').value;
 
     const filters = {
         origin,
         source,
         campaign,
         stage,
+        ...(startDate && { start_date: startDate }),
+        ...(endDate && { end_date: endDate }),
         ...overrides // Overrides take precedence (e.g. click on chart)
     };
 
@@ -406,6 +411,37 @@ async function applyFilters(overrides = {}) {
 
     // Update global dashboard with all filters
     await updateDashboard(filters);
+}
+
+const origin = overrides.origin || document.getElementById('originSelect').value;
+// Determine linked source and campaign based on origin
+let source = '';
+let campaign = '';
+if (origin === 'Site') {
+    source = 'Site';
+    campaign = 'Google ADS';
+} else if (origin === 'Instagram') {
+    source = 'Redes Sociais';
+    campaign = 'Tráfego Pago';
+} else {
+    source = overrides.source || document.getElementById('sourceSelect').value;
+    campaign = overrides.campaign || document.getElementById('campaignSelect').value;
+}
+const stage = overrides.stage || document.getElementById('stageSelect').value;
+
+const filters = {
+    origin,
+    source,
+    campaign,
+    stage,
+    ...overrides // Overrides take precedence (e.g. click on chart)
+};
+
+// Remove empty filters
+Object.keys(filters).forEach(key => filters[key] === undefined || filters[key] === '' ? delete filters[key] : {});
+
+// Update global dashboard with all filters
+await updateDashboard(filters);
 }
 
 function renderTable(leads) {
