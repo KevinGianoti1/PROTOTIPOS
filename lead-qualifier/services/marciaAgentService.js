@@ -1,5 +1,7 @@
 require('dotenv').config();
 const OpenAI = require('openai');
+const fs = require('fs');
+const path = require('path');
 const logger = require('../utils/logger');
 const cnpjService = require('./cnpjService');
 const validationService = require('./validationService');
@@ -10,19 +12,14 @@ const databaseService = require('./databaseService');
  * Serviço do Agente Márcia
  * Gerencia conversas com leads usando OpenAI
  */
-
 class MarciaAgentService {
     constructor() {
         this.openai = null;
-
         // Inicializa Banco de Dados
         databaseService.init().catch(err => logger.error('Erro fatal ao iniciar DB:', err));
-
         // Inicializa OpenAI se a chave estiver configurada
         if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') {
-            this.openai = new OpenAI({
-                apiKey: process.env.OPENAI_API_KEY
-            });
+            this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
             logger.info('✅ OpenAI configurada');
         } else {
             logger.warn('⚠️ OPENAI_API_KEY não configurada - Márcia não poderá responder');
@@ -39,62 +36,46 @@ class MarciaAgentService {
         if (!this.openai) {
             return 'Oi! No momento estou com problemas técnicos 😅 Tente novamente mais tarde!';
         }
-
         try {
             // Recupera ou cria contato no DB
             let contact = await databaseService.getContact(phoneNumber);
-
             if (!contact) {
                 contact = await databaseService.createContact(phoneNumber, { ready: false });
             }
-
-            // Adiciona mensagem do usuário ao histórico
+            // Salva mensagem do usuário
             await databaseService.addMessage(phoneNumber, 'user', message);
-
-            // Recupera histórico para o prompt
+            // Histórico para o prompt
             const history = await databaseService.getHistory(phoneNumber);
-
             // Chama OpenAI
             const completion = await this.openai.chat.completions.create({
                 model: 'gpt-4o-mini',
-                messages: [
-                    { role: 'system', content: this.getSystemPrompt() },
-                    ...history
-                ],
+                messages: [{ role: 'system', content: this.getSystemPrompt() }, ...history],
                 temperature: 0.7,
                 max_tokens: 1200
             });
-
             const assistantMessage = completion.choices[0].message.content;
-
-            // Adiciona resposta ao histórico
+            // Salva resposta
             await databaseService.addMessage(phoneNumber, 'assistant', assistantMessage);
-
-            // Tenta extrair dados estruturados da resposta
+            // Extrai dados estruturados
             const extractedData = this.extractDataFromResponse(assistantMessage);
-
-            // Atualiza dados coletados no cache do contato
+            // Atualiza contato
             const currentData = contact.data_cache || {};
             const updatedData = { ...currentData, ...extractedData };
-
             await databaseService.updateContact(phoneNumber, {
                 data_cache: updatedData,
-                // Se extraiu CNPJ ou Nome, já salva nas colunas dedicadas também para facilitar busca
                 ...(extractedData.cnpj && { cnpj: extractedData.cnpj }),
                 ...(extractedData.name && { name: extractedData.name }),
-                ...(extractedData.email && { email: extractedData.email })
+                ...(extractedData.email && { email: extractedData.email }),
+                ...(extractedData.origin && { origin: extractedData.origin }),
+                ...(extractedData.campaign && { campaign: extractedData.campaign }),
+                ...(extractedData.source && { source: extractedData.source })
             });
-
-            // Verifica se a coleta está completa
-            if (extractedData.ready === true) {
+            // Se coleta completa, processa lead
+            if (extractedData.ready) {
                 logger.info('✅ Coleta completa para', phoneNumber);
-
-                // Processa o lead
                 await this.processCompleteLead(phoneNumber, updatedData);
             }
-
             return assistantMessage;
-
         } catch (error) {
             logger.error('Erro ao processar mensagem:', error);
             return 'Ops! Tive um probleminha aqui 😅 Pode repetir?';
@@ -102,25 +83,42 @@ class MarciaAgentService {
     }
 
     /**
-     * Processa lead com dados completos
+     * Transcreve áudio usando Whisper
+     * @param {string} filePath - Caminho do arquivo de áudio
+     * @returns {Promise<string>} - Texto transcrito
+     */
+    async transcribeAudio(filePath) {
+        try {
+            logger.info('🎙️ Transcrevendo áudio...', { file: filePath });
+            const transcription = await this.openai.audio.transcriptions.create({
+                file: fs.createReadStream(filePath),
+                model: "whisper-1",
+                language: "pt"
+            });
+            logger.info('🗣️ Transcrição:', transcription.text);
+            return transcription.text;
+        } catch (error) {
+            logger.error('❌ Erro na transcrição:', error);
+            throw new Error('Não consegui ouvir seu áudio 😔');
+        }
+    }
+
+    /**
+     * Processa lead completo (valida e envia para RD Station)
      */
     async processCompleteLead(phoneNumber, data) {
         try {
             logger.info('🔄 Processando lead completo:', data);
-
             // 1. Consulta CNPJ
             const empresaData = await cnpjService.consultarCNPJ(data.cnpj);
-
             // 2. Valida CNAE
             const isValid = validationService.validateCNAE(empresaData.cnaePrincipal.codigo, empresaData.cnaesSecundarios);
-
             if (!isValid) {
                 logger.info('❌ CNAE não aprovado para', phoneNumber);
                 await databaseService.updateContact(phoneNumber, { stage: 'disqualified' });
                 return;
             }
-
-            // 3. Gera resumo da conversa do histórico
+            // 3. Resumo da conversa
             const history = await databaseService.getHistory(phoneNumber);
             let conversationSummary = '';
             if (history) {
@@ -128,8 +126,7 @@ class MarciaAgentService {
                     .map(msg => `${msg.role === 'user' ? '👤 Cliente' : '🤖 Márcia'}: ${msg.content}`)
                     .join('\n\n');
             }
-
-            // 4. Prepara dados para o RD Station
+            // 4. Dados para RD Station
             const leadData = {
                 lead: {
                     nome: data.name || 'Não informado',
@@ -149,25 +146,21 @@ class MarciaAgentService {
                     uf: empresaData.endereco.uf,
                     cep: empresaData.endereco.cep,
                     email: empresaData.email,
-                    ddd: empresaData.telefone.match(/\\((\\d{2})\\)/)?.[1] || '',
-                    telefone: empresaData.telefone.replace(/\\D/g, '')
+                    ddd: empresaData.telefone.match(/\((\d{2})\)/)?.[1] || '',
+                    telefone: empresaData.telefone.replace(/\D/g, '')
                 },
                 validacao: {
                     qualificado: true,
                     motivo: 'CNAE aprovado pela Márcia',
                     cnaeMatch: empresaData.cnaePrincipal
                 },
-                conversationSummary: conversationSummary
+                conversationSummary
             };
-
             // 5. Cria no RD Station
             const result = await rdStationService.processLead(leadData);
-
             logger.info('✅ Lead processado com sucesso:', result);
-
-            // Marca como completado no DB (não deleta para manter histórico)
+            // Marca como completado
             await databaseService.updateContact(phoneNumber, { stage: 'completed' });
-
         } catch (error) {
             logger.error('❌ Erro ao processar lead completo:', error);
         }
@@ -178,47 +171,38 @@ class MarciaAgentService {
      */
     extractDataFromResponse(response) {
         const data = {};
-
-        // Tenta encontrar JSON na resposta
+        // Tenta encontrar JSON
         const jsonMatch = response.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             try {
-                const parsed = JSON.parse(jsonMatch[0]);
-                return parsed;
+                return JSON.parse(jsonMatch[0]);
             } catch (e) {
-                // Não é JSON válido, continua com regex
+                // continua com regex
             }
         }
-
-        // Extração por regex (fallback)
         const patterns = {
             cnpj: /CNPJ[:\s]+([0-9.\/\-]{14,18})/i,
-            name: /Nome[\/\s]+Empresa[:\s]+([^\n]+)/i,
+            name: /Nome(?:\s+da\s+empresa)?[:\s]+([^\n]+)/i,
             phone: /Telefone[:\s]+([0-9\s\-\(\)]+)/i,
-            email: /E-mail[:\s]+([^\s\n]+@[^\s\n]+)/i,
+            email: /E[-]?mail[:\s]+([^\s\n]+@[^\s\n]+)/i,
             origin: /Origem(?:\s+do\s+contato)?[:\s]+([^\n]+)/i,
-            produto: /Produto[:\s]+([^\n]+)/i,
-            quantidade: /Quantidade[:\s]+([0-9]+)/i,
+            source: /Fonte(?:\s+do\s+contato)?[:\s]+([^\n]+)/i,
+            campaign: /Campanha[:\s]+([^\n]+)/i,
+            product: /Produto[:\s]+([^\n]+)/i,
+            quantity: /Quantidade[:\s]+([0-9]+)/i,
             prazo: /Prazo(?:\s+de\s+compra)?[:\s]+([^\n]+)/i
         };
-
-        for (const [key, pattern] of Object.entries(patterns)) {
-            const match = response.match(pattern);
+        for (const [key, regex] of Object.entries(patterns)) {
+            const match = response.match(regex);
             if (match) {
                 let value = match[1].trim();
-
-                // Limpa prefixos comuns
                 value = value.replace(/^(do\s+contato:\s*|de\s+compra:\s*)/i, '');
-
                 data[key] = value;
             }
         }
-
-        // Verifica se está pronto (todos os campos obrigatórios)
         if (data.cnpj && data.name && data.phone) {
             data.ready = true;
         }
-
         return data;
     }
 
@@ -261,66 +245,29 @@ Peça o nome do responsável ou da empresa.
 Peça o número de telefone ou WhatsApp com DDD.  
 
 5. **E-mail:**  
-Peça o e-mail de contato (opcional).  
+Peça o e-mail para contato.  
 
-6. **Perfil da empresa:**  
-Pergunte se são distribuidora, revenda ou lojista.  
+6. **Origem:**  
+Pergunte como conheceu a Maxi Force (Instagram, Google, Indicação, Site, etc.).  
 
-7. **Origem do contato:**  
-Pergunte como chegou até a Maxi Force (Instagram, site, indicação).  
+7. **Interesse:**  
+Pergunte quais produtos tem interesse (discos, serras, lixas, etc.) e para qual aplicação (granito, porcelanato, etc.).  
 
-8. **Produto e aplicação:**  
-Pergunte o que o cliente procura e como utiliza.  
-
-9. **Quantidade e prazo:**  
-Pergunte quantos produtos compram normalmente e quando pensam em comprar.  
-
-10. **Resumo e confirmação final:**  
-Antes de encerrar, faça sempre um resumo completo:  
-"Show, [nome]! 😄 Então ficou assim:  
-🔹 CNPJ: [CNPJ]  
-🔹 Nome / Empresa: [nome]  
-🔹 Telefone: [telefone]  
-🔹 E-mail: [email]  
-🔹 Perfil: [perfil]  
-🔹 Origem do contato: [origem]  
-🔹 Produto: [produto]  
-🔹 Quantidade média: [quantidade]  
-🔹 Prazo de compra: [prazo]  
-Tudo certinho? 🙌"  
+8. **Prazo:**  
+Pergunte para quando precisa do material.  
 
 </tarefas>
 
-<instrucoes-saida>
+<regras>
+- Se o cliente não souber o CNPJ, peça o nome da empresa e cidade para tentar localizar.  
+- Se o cliente for consumidor final (CPF), explique educadamente que atendemos apenas empresas e indique um revendedor próximo (invente um nome de loja genérico se necessário ou diga que vai verificar).  
+- Se o cliente perguntar preço, diga que o consultor comercial fará a cotação personalizada.  
+</regras>
 
-❗Quando (e somente quando) você já tiver coletado TODAS as seguintes informações:
-
-- Nome do responsável ou empresa  
-- E-mail de contato (ou confirmado que não tem)  
-- Telefone com DDI (ex: 5511999999999)  
-- CNPJ válido (14 dígitos)  
-- Tipo de cliente (Distribuidora, Revenda ou Lojista)  
-- Origem do contato  
-- Produto desejado  
-- Quantidade média comprada  
-- Prazo de compra  
-
-🔒 Sua resposta final **deve incluir um JSON** no final da mensagem:
-
-{
-  "ready": true,
-  "name": "Nome da empresa ou responsável",
-  "email": "email@email.com",
-  "phone": "5511999999999",
-  "cnpj": "12345678000190",
-  "cliente": "Revenda",
-  "origin": "WhatsApp",
-  "produto": "discos para granito",
-  "quantidade": "200",
-  "prazo": "agora"
-}
-
-</instrucoes-saida>`;
+<saida>
+Sempre termine sua resposta com uma pergunta para manter a conversa fluindo, a menos que tenha finalizado a coleta.
+Quando tiver coletado CNPJ, Nome e Telefone, tente extrair os dados em formato JSON no final da mensagem (oculto para o usuário, mas visível para o sistema).
+</saida>`;
     }
 }
 

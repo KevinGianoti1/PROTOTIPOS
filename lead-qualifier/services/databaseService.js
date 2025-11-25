@@ -17,6 +17,7 @@ class DatabaseService {
             });
 
             await this.createTables();
+            await this.migrateTables(); // Adiciona colunas novas se não existirem
             logger.info('📦 Banco de dados SQLite inicializado com sucesso');
         } catch (error) {
             logger.error('❌ Erro ao inicializar banco de dados:', error);
@@ -32,6 +33,9 @@ class DatabaseService {
                 name TEXT,
                 email TEXT,
                 cnpj TEXT,
+                source TEXT,
+                origin TEXT,
+                campaign TEXT,
                 thread_id TEXT,
                 stage TEXT DEFAULT 'initial',
                 data_cache TEXT, -- JSON string para guardar dados temporários
@@ -53,6 +57,17 @@ class DatabaseService {
         `);
     }
 
+    async migrateTables() {
+        try {
+            // Tenta adicionar colunas novas em bancos existentes
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN source TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN origin TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN campaign TEXT").catch(() => { });
+        } catch (error) {
+            // Ignora erro se coluna já existir
+        }
+    }
+
     // --- Métodos de Contato ---
 
     async getContact(phone) {
@@ -65,9 +80,9 @@ class DatabaseService {
 
     async createContact(phone, initialData = {}) {
         const now = new Date().toISOString();
-        await this.db.run(
-            `INSERT OR IGNORE INTO contacts (phone, stage, data_cache, created_at, updated_at) 
-             VALUES (?, ?, ?, ?, ?)`,
+        await this.db.run(`
+            INSERT OR IGNORE INTO contacts (phone, stage, data_cache, created_at, updated_at) 
+            VALUES (?, ?, ?, ?, ?)`,
             [phone, 'initial', JSON.stringify(initialData), now, now]
         );
         return this.getContact(phone);
@@ -115,6 +130,90 @@ class DatabaseService {
             'SELECT role, content FROM messages WHERE phone = ? ORDER BY created_at ASC LIMIT ?',
             [phone, limit]
         );
+    }
+
+    // --- Métodos de Analytics (Dashboard) ---
+
+    async getDashboardStats() {
+        const total = await this.db.get('SELECT COUNT(*) as count FROM contacts');
+        const qualified = await this.db.get("SELECT COUNT(*) as count FROM contacts WHERE stage = 'completed'");
+        const disqualified = await this.db.get("SELECT COUNT(*) as count FROM contacts WHERE stage = 'disqualified'");
+
+        // Agrupamento por Origem
+        const byOrigin = await this.db.all('SELECT origin, COUNT(*) as count FROM contacts GROUP BY origin');
+
+        const totalCount = total.count || 0;
+        const qualifiedCount = qualified.count || 0;
+        const conversionRate = totalCount > 0 ? ((qualifiedCount / totalCount) * 100).toFixed(1) : 0;
+
+        return {
+            total: totalCount,
+            qualified: qualifiedCount,
+            disqualified: disqualified.count || 0,
+            conversionRate: conversionRate,
+            byOrigin: byOrigin.map(o => ({ name: o.origin || 'Desconhecido', count: o.count }))
+        };
+    }
+
+    async getDailyLeads(days = 7) {
+        const query = `
+            SELECT 
+                strftime('%Y-%m-%d', created_at) as date,
+                COUNT(*) as count
+            FROM contacts
+            WHERE created_at >= date('now', '-' || ? || ' days')
+            GROUP BY date
+            ORDER BY date ASC
+        `;
+        return await this.db.all(query, [days]);
+    }
+
+    async getRecentLeads(limit = 10) {
+        return await this.db.all(`
+            SELECT name, phone, stage, origin, campaign, source, created_at 
+            FROM contacts 
+            ORDER BY created_at DESC 
+            LIMIT ?
+        `, [limit]);
+    }
+
+    async getLeadsByFilter(filters = {}) {
+        let query = 'SELECT name, phone, stage, origin, campaign, source, created_at FROM contacts WHERE 1=1';
+        const params = [];
+
+        if (filters.origin) {
+            query += ' AND origin = ?';
+            params.push(filters.origin);
+        }
+
+        if (filters.source) {
+            query += ' AND source = ?';
+            params.push(filters.source);
+        }
+
+        if (filters.campaign) {
+            query += ' AND campaign LIKE ?';
+            params.push(`%${filters.campaign}%`);
+        }
+
+        if (filters.stage) {
+            query += ' AND stage = ?';
+            params.push(filters.stage);
+        }
+
+        query += ' ORDER BY created_at DESC LIMIT 50';
+
+        return await this.db.all(query, params);
+    }
+
+    async getUniqueOrigins() {
+        const result = await this.db.all('SELECT DISTINCT origin FROM contacts WHERE origin IS NOT NULL AND origin != "" ORDER BY origin ASC');
+        return result.map(r => r.origin);
+    }
+
+    async getUniqueSources() {
+        const result = await this.db.all('SELECT DISTINCT source FROM contacts WHERE source IS NOT NULL AND source != "" ORDER BY source ASC');
+        return result.map(r => r.source);
     }
 }
 

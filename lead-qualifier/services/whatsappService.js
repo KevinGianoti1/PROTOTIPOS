@@ -1,6 +1,8 @@
 require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const fs = require('fs');
+const path = require('path');
 const logger = require('../utils/logger');
 const marciaAgentService = require('./marciaAgentService');
 
@@ -94,12 +96,48 @@ class WhatsAppService {
             }
 
             const phoneNumber = message.from.replace('@c.us', '');
-            const messageText = message.body;
+            let messageContent = message.body;
 
-            logger.info(`📩 Mensagem recebida de ${phoneNumber}: "${messageText}"`);
+            logger.info(`📩 Mensagem recebida de ${phoneNumber}: "${message.type}"`);
+
+            // Tratamento de Áudio (PTT - Push to Talk)
+            if (message.type === 'ptt' || message.type === 'audio') {
+                try {
+                    logger.info('🎤 Áudio recebido, baixando...');
+                    const media = await message.downloadMedia();
+
+                    if (media) {
+                        // Garante que a pasta temp existe
+                        const tempDir = path.join(__dirname, '../temp');
+                        if (!fs.existsSync(tempDir)) {
+                            fs.mkdirSync(tempDir);
+                        }
+
+                        // Salva arquivo temporário
+                        const fileName = `audio_${phoneNumber}_${Date.now()}.ogg`;
+                        const filePath = path.join(tempDir, fileName);
+
+                        fs.writeFileSync(filePath, media.data, 'base64');
+                        logger.info('Arquivo de áudio salvo:', filePath);
+
+                        // Envia feedback para o usuário
+                        await message.reply('(Ouvindo seu áudio...) 🎧');
+
+                        // Transcreve
+                        messageContent = await marciaAgentService.transcribeAudio(filePath);
+
+                        // Remove arquivo temporário
+                        fs.unlinkSync(filePath);
+                    }
+                } catch (error) {
+                    logger.error('Erro ao processar áudio:', error);
+                    await message.reply('Tive um problema para ouvir seu áudio 😔 Pode escrever?');
+                    return;
+                }
+            }
 
             // Envia para o agente Márcia processar
-            const response = await marciaAgentService.processMessage(phoneNumber, messageText);
+            const response = await marciaAgentService.processMessage(phoneNumber, messageContent);
 
             // Envia a resposta
             if (response) {

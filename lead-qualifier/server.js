@@ -1,3 +1,4 @@
+// Server setup for Lead Qualifier Dashboard
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -7,6 +8,7 @@ const cnpjService = require('./services/cnpjService');
 const validationService = require('./services/validationService');
 const rdStationService = require('./services/rdStationService');
 const whatsappService = require('./services/whatsappService');
+const databaseService = require('./services/databaseService');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -17,12 +19,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Rota principal - serve a interface de teste
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// Serve main page
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-// Rota de health check
+// Health check
 app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
@@ -31,28 +31,15 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Endpoint principal - recebe dados do formulário/webhook
+// Webhook – receives lead data from external forms
 app.post('/webhook/lead', async (req, res) => {
     try {
         const { cnpj, nome, telefone, origem } = req.body;
-
-        // Validação básica
         if (!cnpj || !nome || !telefone) {
-            return res.status(400).json({
-                success: false,
-                error: 'Campos obrigatórios: cnpj, nome, telefone'
-            });
+            return res.status(400).json({ success: false, error: 'Campos obrigatórios: cnpj, nome, telefone' });
         }
-
         logger.info('Novo lead recebido', { cnpj, nome, origem: origem || 'não informado' });
-
-        // Processa o lead (consulta CNPJ + valida PCI)
-        const resultado = await validationService.processarLead(
-            { cnpj, nome, telefone, origem: origem || 'Teste' },
-            cnpjService
-        );
-
-        // Tenta integrar com RD Station (se configurado)
+        const resultado = await validationService.processarLead({ cnpj, nome, telefone, origem: origem || 'Teste' }, cnpjService);
         let rdStationResult = null;
         if (rdStationService.isConfigured()) {
             try {
@@ -65,45 +52,97 @@ app.post('/webhook/lead', async (req, res) => {
             logger.info('RD Station não configurado - modo teste');
             rdStationResult = { mode: 'test', message: 'RD Station não configurado' };
         }
-
-        // Retorna resultado completo
-        res.json({
-            success: true,
-            resultado: {
-                lead: resultado.lead,
-                empresa: resultado.empresa,
-                validacao: resultado.validacao,
-                rdStation: rdStationResult
-            }
-        });
-
+        res.json({ success: true, resultado: { lead: resultado.lead, empresa: resultado.empresa, validacao: resultado.validacao, rdStation: rdStationResult } });
     } catch (error) {
         logger.error('Erro ao processar lead', { error: error.message });
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// Endpoint para listar CNAEs permitidos
+// CNAE permitidos endpoint
 app.get('/api/cnaes-permitidos', (req, res) => {
     const cnaes = validationService.getCNAEsPermitidos();
-    res.json({
-        success: true,
-        total: cnaes.length,
-        cnaes: cnaes
-    });
+    res.json({ success: true, total: cnaes.length, cnaes });
 });
 
-// Inicia o servidor
+// Dashboard statistics
+app.get('/api/dashboard/stats', async (req, res) => {
+    try {
+        const stats = await databaseService.getDashboardStats();
+        res.json(stats);
+    } catch (error) {
+        logger.error('Erro ao buscar stats:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Daily leads chart data
+app.get('/api/dashboard/chart', async (req, res) => {
+    try {
+        const data = await databaseService.getDailyLeads();
+        res.json(data);
+    } catch (error) {
+        logger.error('Erro ao buscar dados do gráfico:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Recent leads table
+app.get('/api/dashboard/recent', async (req, res) => {
+    try {
+        const leads = await databaseService.getRecentLeads();
+        res.json(leads);
+    } catch (error) {
+        logger.error('Erro ao buscar leads recentes:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Unique origins for filter dropdown
+app.get('/api/dashboard/origins', async (req, res) => {
+    try {
+        const origins = await databaseService.getUniqueOrigins();
+        res.json({ origins });
+    } catch (error) {
+        logger.error('Erro ao buscar origens únicas:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Unique sources for filter dropdown
+app.get('/api/dashboard/sources', async (req, res) => {
+    try {
+        const sources = await databaseService.getUniqueSources();
+        res.json({ sources });
+    } catch (error) {
+        logger.error('Erro ao buscar fontes únicas:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Filtered leads endpoint – accepts query params origin, source, campaign, stage
+app.get('/api/dashboard/filter', async (req, res) => {
+    try {
+        const filters = {
+            origin: req.query.origin || undefined,
+            source: req.query.source || undefined,
+            campaign: req.query.campaign || undefined,
+            stage: req.query.stage || undefined
+        };
+        const leads = await databaseService.getLeadsByFilter(filters);
+        res.json(leads);
+    } catch (error) {
+        logger.error('Erro ao buscar leads filtrados:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Start server and initialize WhatsApp (Márcia)
 app.listen(PORT, async () => {
     logger.info(`🚀 Servidor rodando na porta ${PORT}`);
-    logger.info(`📊 Interface de teste: http://localhost:${PORT}`);
+    logger.info(`📊 Dashboard: http://localhost:${PORT}`);
     logger.info(`🔌 Webhook endpoint: http://localhost:${PORT}/webhook/lead`);
     logger.info(`✅ RD Station configurado: ${rdStationService.isConfigured() ? 'SIM' : 'NÃO (modo teste)'}`);
-
-    // Inicializa WhatsApp (Márcia)
     try {
         logger.info('🤖 Inicializando Márcia (WhatsApp Agent)...');
         await whatsappService.initialize();
