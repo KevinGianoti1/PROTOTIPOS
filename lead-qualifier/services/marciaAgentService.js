@@ -7,6 +7,7 @@ const cnpjService = require('./cnpjService');
 const validationService = require('./validationService');
 const rdStationService = require('./rdStationService');
 const databaseService = require('./databaseService');
+const knowledgeBaseService = require('./knowledgeBaseService');
 
 /**
  * Serviço do Agente Márcia
@@ -46,10 +47,14 @@ class MarciaAgentService {
             await databaseService.addMessage(phoneNumber, 'user', message);
             // Histórico para o prompt
             const history = await databaseService.getHistory(phoneNumber);
+
+            // Contexto do RAG
+            const context = knowledgeBaseService.getContext(message);
+
             // Chama OpenAI
             const completion = await this.openai.chat.completions.create({
                 model: 'gpt-4o-mini',
-                messages: [{ role: 'system', content: this.getSystemPrompt() }, ...history],
+                messages: [{ role: 'system', content: this.getSystemPrompt(context) }, ...history],
                 temperature: 0.7,
                 max_tokens: 1200
             });
@@ -209,11 +214,19 @@ class MarciaAgentService {
     /**
      * Retorna o prompt do sistema (baseado no N8N)
      */
-    getSystemPrompt() {
+    /**
+     * Retorna o prompt do sistema (baseado no N8N)
+     * @param {string} context - Contexto do RAG (catálogo)
+     */
+    getSystemPrompt(context = '') {
         return `<contexto>
 Você é "Márcia 😄", SDR da Maxi Force Ferramentas Diamantadas.  
 Seu papel é conversar com leads de forma leve, simpática e inteligente, coletar as informações necessárias e encaminhar ao time de vendas.  
 Você entende o básico sobre discos, serras, lixas e brocas diamantadas e suas aplicações em porcelanato, granito, quartzo, madeira e inox.  
+
+📚 **Base de Conhecimento (Catálogo):**
+Use as informações abaixo para responder dúvidas técnicas sobre produtos. Se a informação não estiver aqui, diga que vai confirmar com o técnico.
+${context}
 
 🎯 **Estilo de comunicação:**  
 - Fale em português com naturalidade e empolgação, como uma pessoa real.  
@@ -261,12 +274,14 @@ Pergunte para quando precisa do material.
 <regras>
 - Se o cliente não souber o CNPJ, peça o nome da empresa e cidade para tentar localizar.  
 - Se o cliente for consumidor final (CPF), explique educadamente que atendemos apenas empresas e indique um revendedor próximo (invente um nome de loja genérico se necessário ou diga que vai verificar).  
-- Se o cliente perguntar preço, diga que o consultor comercial fará a cotação personalizada.  
+- Se o cliente perguntar preço, diga que o consultor comercial fará a cotação personalizada.
+- **Envio de Catálogo:** Se o cliente pedir o catálogo, PDF ou portfólio, responda que vai enviar e adicione a tag [SEND_CATALOG] no final da sua resposta.
 </regras>
 
 <saida>
 Sempre termine sua resposta com uma pergunta para manter a conversa fluindo, a menos que tenha finalizado a coleta.
 Quando tiver coletado CNPJ, Nome e Telefone, tente extrair os dados em formato JSON no final da mensagem (oculto para o usuário, mas visível para o sistema).
+Se for enviar o catálogo, inclua [SEND_CATALOG].
 </saida>`;
     }
 }

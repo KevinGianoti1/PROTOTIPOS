@@ -59,12 +59,70 @@ class DatabaseService {
 
     async migrateTables() {
         try {
-            // Tenta adicionar colunas novas em bancos existentes
+            // Colunas existentes
             await this.db.exec("ALTER TABLE contacts ADD COLUMN source TEXT").catch(() => { });
             await this.db.exec("ALTER TABLE contacts ADD COLUMN origin TEXT").catch(() => { });
             await this.db.exec("ALTER TABLE contacts ADD COLUMN campaign TEXT").catch(() => { });
+
+            // Informações da Empresa (CNPJ)
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN razao_social TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN nome_fantasia TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN cnae_principal TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN cnae_descricao TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN porte_empresa TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN capital_social REAL").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN data_abertura TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN situacao_cadastral TEXT").catch(() => { });
+
+            // Endereço Completo
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN logradouro TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN numero TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN complemento TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN bairro TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN cidade TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN estado TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN cep TEXT").catch(() => { });
+
+            // Dados de Contato Adicionais
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN telefone_fixo TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN site TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN linkedin TEXT").catch(() => { });
+
+            // Informações do Lead
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN cargo_contato TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN departamento TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN produto_interesse TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN quantidade_estimada TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN prazo_compra TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN ticket_medio REAL").catch(() => { });
+
+            // Qualificação & Scoring
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN lead_score INTEGER DEFAULT 0").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN temperatura TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN motivo_desqualificacao TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN cnae_valido BOOLEAN").catch(() => { });
+
+            // Interação & Engajamento
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN total_mensagens INTEGER DEFAULT 0").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN ultima_interacao DATETIME").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN tempo_resposta_medio INTEGER").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN catalogo_enviado BOOLEAN DEFAULT 0").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN audio_recebido BOOLEAN DEFAULT 0").catch(() => { });
+
+            // Integração RD Station
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN rd_deal_id TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN rd_contact_id TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN rd_organization_id TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN rd_synced_at DATETIME").catch(() => { });
+
+            // Anotações & Observações
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN observacoes TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN tags TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN prioridade TEXT").catch(() => { });
+
+            logger.info('✅ Migração de colunas concluída');
         } catch (error) {
-            // Ignora erro se coluna já existir
+            logger.error('Erro na migração:', error);
         }
     }
 
@@ -214,6 +272,123 @@ class DatabaseService {
     async getUniqueSources() {
         const result = await this.db.all('SELECT DISTINCT source FROM contacts WHERE source IS NOT NULL AND source != "" ORDER BY source ASC');
         return result.map(r => r.source);
+    }
+
+    // --- Métodos Avançados de Analytics (Fase 1) ---
+
+    async getAdvancedStats() {
+        // Estatísticas por temperatura
+        const byTemperature = await this.db.all(`
+            SELECT temperatura, COUNT(*) as count 
+            FROM contacts 
+            WHERE temperatura IS NOT NULL 
+            GROUP BY temperatura
+        `);
+
+        // Ticket médio
+        const avgTicket = await this.db.get('SELECT AVG(ticket_medio) as avg FROM contacts WHERE ticket_medio IS NOT NULL');
+
+        // Taxa de resposta (leads que enviaram mais de 1 mensagem)
+        const totalLeads = await this.db.get('SELECT COUNT(*) as count FROM contacts');
+        const activeLeads = await this.db.get('SELECT COUNT(*) as count FROM contacts WHERE total_mensagens > 1');
+        const responseRate = totalLeads.count > 0 ? ((activeLeads.count / totalLeads.count) * 100).toFixed(1) : 0;
+
+        // Tempo médio de qualificação (em horas)
+        const avgQualificationTime = await this.db.get(`
+            SELECT AVG(
+                (julianday(updated_at) - julianday(created_at)) * 24
+            ) as avg_hours
+            FROM contacts 
+            WHERE stage = 'completed'
+        `);
+
+        // Catálogos enviados
+        const catalogsSent = await this.db.get('SELECT COUNT(*) as count FROM contacts WHERE catalogo_enviado = 1');
+
+        return {
+            byTemperature: byTemperature.map(t => ({
+                name: t.temperatura || 'Não classificado',
+                count: t.count
+            })),
+            avgTicket: avgTicket.avg ? parseFloat(avgTicket.avg).toFixed(2) : 0,
+            responseRate: responseRate,
+            avgQualificationTime: avgQualificationTime.avg_hours ? parseFloat(avgQualificationTime.avg_hours).toFixed(1) : 0,
+            catalogsSent: catalogsSent.count || 0
+        };
+    }
+
+    async getLeadScoreDistribution() {
+        const distribution = await this.db.all(`
+            SELECT 
+                CASE 
+                    WHEN lead_score >= 80 THEN '80-100'
+                    WHEN lead_score >= 60 THEN '60-79'
+                    WHEN lead_score >= 40 THEN '40-59'
+                    WHEN lead_score >= 20 THEN '20-39'
+                    ELSE '0-19'
+                END as range,
+                COUNT(*) as count
+            FROM contacts
+            WHERE lead_score IS NOT NULL
+            GROUP BY range
+            ORDER BY range DESC
+        `);
+        return distribution;
+    }
+
+    async getTopCNAEs(limit = 5) {
+        const result = await this.db.all(`
+            SELECT cnae_descricao, COUNT(*) as count 
+            FROM contacts 
+            WHERE cnae_descricao IS NOT NULL 
+            GROUP BY cnae_descricao 
+            ORDER BY count DESC 
+            LIMIT ?
+        `, [limit]);
+        return result.map(r => ({ name: r.cnae_descricao, count: r.count }));
+    }
+
+    async getTopProducts(limit = 5) {
+        const result = await this.db.all(`
+            SELECT produto_interesse, COUNT(*) as count 
+            FROM contacts 
+            WHERE produto_interesse IS NOT NULL 
+            GROUP BY produto_interesse 
+            ORDER BY count DESC 
+            LIMIT ?
+        `, [limit]);
+        return result.map(r => ({ name: r.produto_interesse, count: r.count }));
+    }
+
+    async getGeographicDistribution() {
+        const result = await this.db.all(`
+            SELECT estado, COUNT(*) as count 
+            FROM contacts 
+            WHERE estado IS NOT NULL 
+            GROUP BY estado 
+            ORDER BY count DESC 
+            LIMIT 10
+        `);
+        return result.map(r => ({ name: r.estado, count: r.count }));
+    }
+
+    async getFunnelData() {
+        const initial = await this.db.get("SELECT COUNT(*) as count FROM contacts WHERE stage = 'initial'");
+        const inProgress = await this.db.get("SELECT COUNT(*) as count FROM contacts WHERE total_mensagens > 3");
+        const qualified = await this.db.get("SELECT COUNT(*) as count FROM contacts WHERE stage = 'completed'");
+
+        return [
+            { stage: 'Contato Inicial', count: initial.count || 0 },
+            { stage: 'Em Conversa', count: inProgress.count || 0 },
+            { stage: 'Qualificado', count: qualified.count || 0 }
+        ];
+    }
+
+    async updateLeadScore(phone, score, temperatura) {
+        await this.db.run(
+            'UPDATE contacts SET lead_score = ?, temperatura = ?, updated_at = ? WHERE phone = ?',
+            [score, temperatura, new Date().toISOString(), phone]
+        );
     }
 }
 

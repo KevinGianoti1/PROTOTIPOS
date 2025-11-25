@@ -9,6 +9,7 @@ const validationService = require('./services/validationService');
 const rdStationService = require('./services/rdStationService');
 const whatsappService = require('./services/whatsappService');
 const databaseService = require('./services/databaseService');
+const knowledgeBaseService = require('./services/knowledgeBaseService');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -144,6 +145,9 @@ app.listen(PORT, async () => {
     logger.info(`🔌 Webhook endpoint: http://localhost:${PORT}/webhook/lead`);
     logger.info(`✅ RD Station configurado: ${rdStationService.isConfigured() ? 'SIM' : 'NÃO (modo teste)'}`);
     try {
+        logger.info('📚 Carregando Base de Conhecimento...');
+        await knowledgeBaseService.loadKnowledgeBase();
+
         logger.info('🤖 Inicializando Márcia (WhatsApp Agent)...');
         await whatsappService.initialize();
     } catch (error) {

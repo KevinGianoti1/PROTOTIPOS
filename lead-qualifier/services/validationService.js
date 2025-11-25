@@ -130,9 +130,10 @@ class ValidationService {
      * Esta função orquestra todo o fluxo de validação
      * @param {Object} leadData - Dados do lead { cnpj, nome, telefone, origem }
      * @param {Object} cnpjService - Serviço de consulta CNPJ
+     * @param {Object} databaseService - Serviço de banco de dados
      * @returns {Promise<Object>} - Resultado completo da validação
      */
-    async processarLead(leadData, cnpjService) {
+    async processarLead(leadData, cnpjService, databaseService) {
         try {
             logger.info('Iniciando processamento de lead', {
                 cnpj: leadData.cnpj,
@@ -145,7 +146,32 @@ class ValidationService {
             // 2. Valida contra PCI
             const validacao = this.validarPCI(empresaData);
 
-            // 3. Monta resultado completo
+            // 3. Salva dados completos da empresa no banco
+            if (databaseService && leadData.telefone) {
+                await databaseService.updateContact(leadData.telefone, {
+                    razao_social: empresaData.razaoSocial,
+                    nome_fantasia: empresaData.nomeFantasia,
+                    cnae_principal: empresaData.cnaePrincipal.codigo,
+                    cnae_descricao: empresaData.cnaePrincipal.descricao,
+                    porte_empresa: empresaData.porte,
+                    capital_social: empresaData.capitalSocial,
+                    data_abertura: empresaData.dataAbertura,
+                    situacao_cadastral: empresaData.situacaoCadastral,
+                    cnae_valido: validacao.qualificado,
+                    logradouro: empresaData.endereco.logradouro,
+                    numero: empresaData.endereco.numero,
+                    complemento: empresaData.endereco.complemento,
+                    bairro: empresaData.endereco.bairro,
+                    cidade: empresaData.endereco.municipio,
+                    estado: empresaData.endereco.uf,
+                    cep: empresaData.endereco.cep,
+                    telefone_fixo: empresaData.telefone,
+                    motivo_desqualificacao: validacao.qualificado ? null : validacao.motivo
+                });
+                logger.info('✅ Dados da empresa salvos no banco');
+            }
+
+            // 4. Monta resultado completo
             const resultado = {
                 lead: {
                     nome: leadData.nome,

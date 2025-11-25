@@ -1,10 +1,11 @@
 require('dotenv').config();
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 const marciaAgentService = require('./marciaAgentService');
+const knowledgeBaseService = require('./knowledgeBaseService');
 
 /**
  * Serviço de integração com WhatsApp (API não oficial)
@@ -137,10 +138,22 @@ class WhatsAppService {
             }
 
             // Envia para o agente Márcia processar
-            const response = await marciaAgentService.processMessage(phoneNumber, messageContent);
+            let response = await marciaAgentService.processMessage(phoneNumber, messageContent);
 
-            // Envia a resposta
-            if (response) {
+            // Verifica se deve enviar catálogo
+            if (response && response.includes('[SEND_CATALOG]')) {
+                logger.info('📂 Detectado pedido de catálogo');
+                response = response.replace('[SEND_CATALOG]', '').trim();
+
+                // Envia a resposta de texto primeiro (sem a tag)
+                if (response) {
+                    await message.reply(response);
+                }
+
+                // Envia o arquivo
+                const catalogPath = knowledgeBaseService.getCatalogPath();
+                await this.sendFile(phoneNumber, catalogPath, 'Aqui está o nosso catálogo! 📘');
+            } else if (response) {
                 await message.reply(response);
                 logger.info(`📤 Resposta enviada para ${phoneNumber}`);
             }
@@ -175,6 +188,28 @@ class WhatsAppService {
             logger.info(`📤 Mensagem enviada para ${phoneNumber}`);
         } catch (error) {
             logger.error(`❌ Erro ao enviar mensagem para ${phoneNumber}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Envia arquivo para um número
+     * @param {string} phoneNumber - Número com DDI
+     * @param {string} filePath - Caminho absoluto do arquivo
+     * @param {string} caption - Legenda opcional
+     */
+    async sendFile(phoneNumber, filePath, caption = '') {
+        if (!this.isReady) {
+            throw new Error('WhatsApp não está conectado');
+        }
+
+        try {
+            const chatId = `${phoneNumber}@c.us`;
+            const media = MessageMedia.fromFilePath(filePath);
+            await this.client.sendMessage(chatId, media, { caption });
+            logger.info(`📤 Arquivo enviado para ${phoneNumber}: ${filePath}`);
+        } catch (error) {
+            logger.error(`❌ Erro ao enviar arquivo para ${phoneNumber}:`, error);
             throw error;
         }
     }
