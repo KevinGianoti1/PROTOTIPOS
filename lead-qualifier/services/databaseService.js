@@ -120,6 +120,12 @@ class DatabaseService {
             await this.db.exec("ALTER TABLE contacts ADD COLUMN tags TEXT").catch(() => { });
             await this.db.exec("ALTER TABLE contacts ADD COLUMN prioridade TEXT").catch(() => { });
 
+            // Robustez & Segurança
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN flagged_for_moderation BOOLEAN DEFAULT 0").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN cnpj_attempts INTEGER DEFAULT 0").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN blocked_until TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN cnpj_confirmed BOOLEAN DEFAULT 0").catch(() => { });
+
             logger.info('✅ Migração de colunas concluída');
         } catch (error) {
             logger.error('Erro na migração:', error);

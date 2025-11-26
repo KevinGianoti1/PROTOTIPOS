@@ -10,6 +10,8 @@ const databaseService = require('./databaseService');
 const knowledgeBaseService = require('./knowledgeBaseService');
 const leadScoringService = require('./leadScoringService');
 const { formatPhoneNumber, validateCNPJ, validateEmail } = require('../utils/validationHelpers');
+const auditLogger = require('../utils/auditLogger');
+const { containsProfanity, containsSensitiveData } = require('../utils/contentFilter');
 
 /**
  * Serviço do Agente Márcia
@@ -40,11 +42,63 @@ class MarciaAgentService {
             return 'Oi! No momento estou com problemas técnicos 😅 Tente novamente mais tarde!';
         }
         try {
+            // Log da mensagem recebida
+            auditLogger.logMessage(phoneNumber, 'user', message);
+
+            // Verifica palavrões
+            if (containsProfanity(message)) {
+                auditLogger.log({ type: 'profanity_detected', phoneNumber, message: message.substring(0, 100) });
+                await databaseService.updateContact(phoneNumber, { flagged_for_moderation: true });
+                return 'Entendo sua frustração! Vou transferir você para um atendente humano. 🙏';
+            }
+
+            // Verifica dados sensíveis
+            const sensitiveCheck = containsSensitiveData(message);
+            if (sensitiveCheck.hasSensitiveData) {
+                auditLogger.log({ type: 'sensitive_data_detected', phoneNumber, dataType: sensitiveCheck.type });
+                return '⚠️ ATENÇÃO! Nunca compartilhe senhas ou dados de cartão. Por segurança, vou ignorar essa mensagem.';
+            }
+
             // Recupera ou cria contato no DB
             let contact = await databaseService.getContact(phoneNumber);
             if (!contact) {
                 contact = await databaseService.createContact(phoneNumber, { ready: false });
             }
+
+            // Verifica timeout de conversa (24 horas)
+            if (contact.ultima_interacao) {
+                const lastInteraction = new Date(contact.ultima_interacao);
+                const hoursSinceLastMessage = (new Date() - lastInteraction) / (1000 * 60 * 60);
+
+                if (hoursSinceLastMessage > 24) {
+                    auditLogger.log({ type: 'conversation_timeout', phoneNumber, hoursSinceLastMessage });
+                    // Reseta conversa
+                    await databaseService.updateContact(phoneNumber, {
+                        data_cache: {},
+                        stage: 'new',
+                        cnpj_attempts: 0,
+                        cnpj_confirmed: false
+                    });
+                    contact = await databaseService.getContact(phoneNumber);
+                    return 'Oi! Faz um tempo que não conversamos. Vamos começar de novo? 😊';
+                }
+            }
+
+            // Verifica se está bloqueado
+            if (contact.blocked_until) {
+                const blockedUntil = new Date(contact.blocked_until);
+                if (new Date() < blockedUntil) {
+                    const minutesLeft = Math.ceil((blockedUntil - new Date()) / (1000 * 60));
+                    return `Você atingiu o limite de tentativas. Por favor, aguarde ${minutesLeft} minutos ou entre em contato pelo telefone (11) 1234-5678.`;
+                } else {
+                    // Desbloqueia
+                    await databaseService.updateContact(phoneNumber, {
+                        blocked_until: null,
+                        cnpj_attempts: 0
+                    });
+                }
+            }
+
             // Salva mensagem do usuário
             await databaseService.addMessage(phoneNumber, 'user', message);
             // Histórico para o prompt
@@ -75,6 +129,44 @@ class MarciaAgentService {
             const userExtractedData = this.extractDataFromResponse(message);
             // Combina os dados
             const combinedData = { ...userExtractedData, ...extractedData };
+
+            // Valida CNPJ se foi extraído
+            if (combinedData.cnpj) {
+                const isValidCNPJ = validateCNPJ(combinedData.cnpj);
+                auditLogger.logValidation(phoneNumber, 'cnpj', combinedData.cnpj, isValidCNPJ);
+
+                if (!isValidCNPJ) {
+                    // Incrementa tentativas
+                    const attempts = (contact.cnpj_attempts || 0) + 1;
+                    await databaseService.updateContact(phoneNumber, { cnpj_attempts: attempts });
+
+                    if (attempts >= 3) {
+                        // Bloqueia por 1 hora
+                        const blockedUntil = new Date(Date.now() + 60 * 60 * 1000);
+                        await databaseService.updateContact(phoneNumber, { blocked_until: blockedUntil.toISOString() });
+                        auditLogger.logBlock(phoneNumber, 'cnpj_attempts_exceeded', '1 hour');
+                        return 'Você tentou muitos CNPJs inválidos. Por favor, aguarde 1 hora ou entre em contato pelo telefone (11) 1234-5678.';
+                    }
+
+                    return `Esse CNPJ parece estar incorreto. Pode verificar e me enviar novamente? 😊\n(Tentativa ${attempts} de 3)`;
+                }
+
+                // CNPJ válido - reseta tentativas
+                await databaseService.updateContact(phoneNumber, { cnpj_attempts: 0 });
+            }
+
+            // Valida e-mail se foi extraído
+            if (combinedData.email) {
+                const isValidEmail = validateEmail(combinedData.email);
+                auditLogger.logValidation(phoneNumber, 'email', combinedData.email, isValidEmail);
+
+                if (!isValidEmail) {
+                    return 'Esse e-mail parece estar incorreto. Pode verificar? 📧';
+                }
+            }
+
+            // Log dos dados extraídos
+            auditLogger.logMessage(phoneNumber, 'assistant', assistantMessage, combinedData);
 
             // Atualiza contato
             const currentData = contact.data_cache || {};
