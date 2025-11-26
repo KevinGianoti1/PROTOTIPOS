@@ -9,6 +9,7 @@ const rdStationService = require('./rdStationService');
 const databaseService = require('./databaseService');
 const knowledgeBaseService = require('./knowledgeBaseService');
 const leadScoringService = require('./leadScoringService');
+const { formatPhoneNumber, validateCNPJ, validateEmail } = require('../utils/validationHelpers');
 
 /**
  * Serviço do Agente Márcia
@@ -48,6 +49,11 @@ class MarciaAgentService {
             await databaseService.addMessage(phoneNumber, 'user', message);
             // Histórico para o prompt
             const history = await databaseService.getHistory(phoneNumber);
+
+            logger.info(`📜 Histórico recuperado para ${phoneNumber}: ${history.length} mensagens`);
+            if (history.length > 0) {
+                logger.info('   Última mensagem do histórico:', history[history.length - 1]);
+            }
 
             // Contexto do RAG
             const context = knowledgeBaseService.getContext(message);
@@ -146,6 +152,13 @@ class MarciaAgentService {
      */
     async processCompleteLead(phoneNumber, data) {
         try {
+            // Verifica se já foi processado para evitar duplicidade
+            const contact = await databaseService.getContact(phoneNumber);
+            if (contact && contact.stage === 'completed') {
+                logger.info('⚠️ Lead já processado anteriormente, ignorando duplicidade:', phoneNumber);
+                return;
+            }
+
             logger.info('🔄 Processando lead completo:', data);
             // 1. Consulta CNPJ
             const empresaData = await cnpjService.consultarCNPJ(data.cnpj);
@@ -165,10 +178,12 @@ class MarciaAgentService {
                     .join('\n\n');
             }
             // 4. Dados para RD Station
+            const formattedPhone = formatPhoneNumber(data.phone || phoneNumber);
+
             const leadData = {
                 lead: {
                     nome: data.name || 'Não informado',
-                    telefone: data.phone || phoneNumber,
+                    telefone: formattedPhone,
                     email: data.email || '',
                     origem: data.origin || 'WhatsApp'
                 },
@@ -292,45 +307,47 @@ Você não fala sobre preços, descontos, condições comerciais.
 
 </contexto>
 
-<tarefas>
+<instrucoes_inteligencia>
+- **UMA COISA DE CADA VEZ:** Nunca peça várias informações na mesma mensagem. Pergunte uma coisa, espere a resposta, e depois pergunte a próxima.
+- **Analise o Histórico:** Antes de perguntar qualquer coisa, verifique se o cliente já forneceu a informação nas mensagens anteriores.
+- **Não seja repetitiva:** Se o cliente disse "Vi no Instagram", NÃO pergunte "Como conheceu?". Apenas confirme: "Ah, legal que viu no Instagram!".
+- **Fluxo Natural:** Não siga a ordem abaixo como um robô. Colete as informações conforme o fluxo da conversa.
+</instrucoes_inteligencia>
 
-1. **Apresentação:**  
-Cumprimente de acordo com o horário (🌞, ☀️, 🌙), se apresente e comece o papo de forma leve e próxima.  
+<informacoes_necessarias>
+Você precisa coletar os seguintes dados (se já tiver, pule):
 
-2. **CNPJ:**  
-Peça o CNPJ da empresa de forma simples.  
-Aceite com ou sem pontuação (14 dígitos).  
-
-3. **Nome:**  
-Peça o nome do responsável ou da empresa.  
-
-4. **Telefone:**  
-Peça o número de telefone ou WhatsApp com DDD.  
-
-5. **E-mail:**  
-Peça o e-mail para contato.  
-
-6. **Origem:**  
-Pergunte como conheceu a Maxi Force (Instagram, Google, Indicação, Site, etc.).  
-
-7. **Interesse:**  
-Pergunte quais produtos tem interesse (discos, serras, lixas, etc.) e para qual aplicação (granito, porcelanato, etc.).  
-
-8. **Prazo:**  
-Pergunte para quando precisa do material.  
-
-</tarefas>
+1. **CNPJ:** (Essencial)
+2. **Nome do Responsável/Empresa:** (Se não estiver claro no CNPJ)
+3. **Telefone/WhatsApp:** (Geralmente você já tem o número que ele está chamando, só confirme se é esse mesmo para contato)
+4. **E-mail:** (Para envio de propostas)
+5. **Origem:** (Onde conheceu a Maxi Force)
+6. **Interesse/Aplicação:** (Qual produto e para que serve - ex: Serra para granito)
+7. **Prazo:** (Para quando precisa)
+</informacoes_necessarias>
 
 <regras>
 - Se o cliente não souber o CNPJ, peça o nome da empresa e cidade para tentar localizar.  
 - Se o cliente for consumidor final (CPF), explique educadamente que atendemos apenas empresas e indique um revendedor próximo (invente um nome de loja genérico se necessário ou diga que vai verificar).  
 - Se o cliente perguntar preço, diga que o consultor comercial fará a cotação personalizada.
-- **Envio de Catálogo:** Se o cliente pedir o catálogo, PDF ou portfólio, responda que vai enviar e adicione a tag [SEND_CATALOG] no final da sua resposta.
+- **Envio de Catálogo:** SEMPRE que o cliente pedir "catálogo", "PDF", "portfólio" ou "lista de produtos", você DEVE dizer que vai enviar e OBRIGATORIAMENTE adicionar a tag [SEND_CATALOG] no final da resposta.
 </regras>
 
 <saida>
 Sempre termine sua resposta com uma pergunta para manter a conversa fluindo, a menos que tenha finalizado a coleta.
-Quando tiver coletado CNPJ, Nome e Telefone, tente extrair os dados em formato JSON no final da mensagem (oculto para o usuário, mas visível para o sistema).
+
+**IMPORTANTE:** Quando apresentar um resumo dos dados coletados para confirmação do cliente, formate EXATAMENTE assim:
+
+- *CNPJ:* 08054886000168
+- *Nome da empresa:* ABRAMAX
+- *Telefone:* 11987650924
+- *Interesse:* Discos e lixas para granito
+- *Prazo:* O mais rápido possível
+- *Origem:* Instagram
+
+Após a confirmação do cliente, adicione no final da sua resposta (invisível para o usuário):
+{"ready": true, "cnpj": "08054886000168", "name": "ABRAMAX", "phone": "11987650924", "product": "Discos e lixas para granito", "prazo": "O mais rápido possível", "origin": "Instagram"}
+
 Se for enviar o catálogo, inclua [SEND_CATALOG].
 </saida>`;
     }

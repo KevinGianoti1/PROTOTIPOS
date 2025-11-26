@@ -131,7 +131,8 @@ class WhatsAppService {
                 return;
             }
 
-            const phoneNumber = message.from.replace('@c.us', '');
+            // Sanitiza o número (remove sufixos como @c.us, @lid e mantém apenas dígitos)
+            const phoneNumber = message.from.replace(/\D/g, '');
             let messageContent = message.body;
 
             logger.info(`📩 Mensagem recebida de ${phoneNumber}: "${message.type}"`);
@@ -198,9 +199,14 @@ class WhatsAppService {
                     await message.reply(response);
                 }
 
-                // Envia o arquivo
-                const catalogPath = knowledgeBaseService.getCatalogPath();
-                await this.sendFile(phoneNumber, catalogPath, 'Aqui está o nosso catálogo! 📘');
+                // Envia o link do Google Drive
+                const catalogMessage = '📘 *Catálogo Maxi Force*\n\n' +
+                    'Aqui está nosso catálogo completo de produtos:\n' +
+                    'https://drive.google.com/file/d/1SrZblBiGp6qjdRh9OVnoybwgRVQpJezj/view?usp=sharing\n\n' +
+                    'Qualquer dúvida, estou à disposição! 😊';
+
+                await message.reply(catalogMessage);
+                logger.info('✅ Link do catálogo enviado');
 
                 // Marca que enviou catálogo
                 await databaseService.updateContact(phoneNumber, {
@@ -257,12 +263,28 @@ class WhatsAppService {
         }
 
         try {
+            logger.info(`📂 Tentando enviar arquivo para ${phoneNumber}`);
+            logger.info(`   Caminho: ${filePath}`);
+
+            if (!fs.existsSync(filePath)) {
+                throw new Error(`Arquivo não encontrado: ${filePath}`);
+            }
+
+            // Lê o arquivo e converte para base64
+            const fileData = fs.readFileSync(filePath, { encoding: 'base64' });
+            const mimeType = 'application/pdf';
+            const fileName = path.basename(filePath);
+
+            const media = new MessageMedia(mimeType, fileData, fileName);
             const chatId = `${phoneNumber}@c.us`;
-            const media = MessageMedia.fromFilePath(filePath);
+
+            logger.info('   Mídia criada (Base64), enviando...');
             await this.client.sendMessage(chatId, media, { caption });
-            logger.info(`📤 Arquivo enviado para ${phoneNumber}: ${filePath}`);
+
+            logger.info(`✅ Arquivo enviado: ${fileName}`);
         } catch (error) {
-            logger.error(`❌ Erro ao enviar arquivo para ${phoneNumber}:`, error);
+            logger.error(`❌ Erro ao enviar arquivo:`, error);
+            if (error.message) logger.error('   Mensagem:', error.message);
             throw error;
         }
     }
