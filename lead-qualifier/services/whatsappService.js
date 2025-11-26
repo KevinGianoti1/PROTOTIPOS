@@ -20,6 +20,14 @@ class WhatsAppService {
     }
 
     /**
+     * Define o callback para receber o QR Code
+     * @param {Function} callback 
+     */
+    setQRCallback(callback) {
+        this.qrCallback = callback;
+    }
+
+    /**
      * Inicializa o cliente WhatsApp
      */
     async initialize() {
@@ -48,6 +56,9 @@ class WhatsAppService {
             this.client.on('qr', (qr) => {
                 logger.info('📱 Escaneie o QR Code abaixo com o WhatsApp:');
                 qrcode.generate(qr, { small: true });
+                if (this.qrCallback) {
+                    this.qrCallback(qr);
+                }
             });
 
             // Evento: Autenticado
@@ -80,6 +91,29 @@ class WhatsAppService {
             throw error;
         }
     }
+
+    /**
+     * Desconecta o WhatsApp
+     */
+    async disconnect() {
+        if (this.client) {
+            await this.client.destroy();
+            this.client = null;
+            this.isReady = false;
+            logger.info('WhatsApp desconectado manualmente.');
+        }
+    }
+
+    /**
+     * Retorna o status da conexão
+     */
+    getStatus() {
+        return {
+            connected: this.isReady,
+            phoneNumber: this.client && this.client.info ? this.client.info.wid.user : null
+        };
+    }
+
 
     /**
      * Processa mensagens recebidas

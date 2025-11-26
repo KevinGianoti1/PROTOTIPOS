@@ -432,10 +432,14 @@ async function fetchWhatsAppStatus() {
 }
 
 async function toggleWhatsApp() {
+    console.log('toggleWhatsApp called');
     const btn = document.getElementById('whatsapp-action');
+    console.log('Button text:', btn.textContent);
     if (btn.textContent.trim() === 'Conectar') {
+        console.log('Opening QR Modal...');
         openQRModal();
     } else {
+        // Disconnect
         try {
             await fetch('/api/whatsapp/disconnect', { method: 'POST' });
             await fetchWhatsAppStatus();
@@ -446,8 +450,12 @@ async function toggleWhatsApp() {
 }
 
 function openQRModal() {
+    console.log('openQRModal called');
     const modal = document.getElementById('qr-modal');
+    console.log('Modal element:', modal);
     modal.style.display = 'block';
+    console.log('Modal display set to block');
+
     const eventSource = new EventSource('/api/whatsapp/qr');
     eventSource.onmessage = function (event) {
         const img = new Image();
@@ -480,174 +488,7 @@ function closeQRModal() {
 document.addEventListener('DOMContentLoaded', fetchWhatsAppStatus);
 
 
-// Determine linked source and campaign based on origin
-let source = '';
-// Cleaned filter logic after applyFilters
-let source = '';
-let campaign = '';
-if (origin === 'Site') {
-    source = 'Site';
-    campaign = 'Google ADS';
-} else if (origin === 'Instagram') {
-    source = 'Redes Sociais';
-    campaign = 'Tráfego Pago';
-} else {
-    source = overrides.source || document.getElementById('sourceSelect').value;
-    campaign = overrides.campaign || document.getElementById('campaignSelect').value;
-}
-const stage = overrides.stage || document.getElementById('stageSelect').value;
 
-const filters = {
-    origin,
-    source,
-    campaign,
-    stage,
-    ...(startDate && { start_date: startDate }),
-    ...(endDate && { end_date: endDate }),
-    ...overrides
-};
-Object.keys(filters).forEach(key => filters[key] === undefined || filters[key] === '' ? delete filters[key] : {});
-await updateDashboard(filters);
-
-// WhatsApp integration functions
-async function fetchWhatsAppStatus() {
-    try {
-        const res = await fetch('/api/whatsapp/status');
-        const data = await res.json();
-        const statusEl = document.getElementById('whatsapp-status');
-        const numberEl = document.getElementById('whatsapp-number');
-        const btn = document.getElementById('whatsapp-action');
-        if (data.connected) {
-            statusEl.textContent = 'Conectado';
-            numberEl.textContent = data.phoneNumber ? `Número: ${data.phoneNumber}` : '';
-            btn.textContent = 'Desconectar';
-        } else {
-            statusEl.textContent = 'Desconectado';
-            numberEl.textContent = '';
-            btn.textContent = 'Conectar';
-        }
-    } catch (e) {
-        console.error('Erro ao obter status do WhatsApp:', e);
-    }
-}
-
-async function toggleWhatsApp() {
-    const btn = document.getElementById('whatsapp-action');
-    if (btn.textContent.trim() === 'Conectar') {
-        // Open QR modal and start SSE to receive QR code
-        openQRModal();
-    } else {
-        // Disconnect
-        try {
-            await fetch('/api/whatsapp/disconnect', { method: 'POST' });
-            await fetchWhatsAppStatus();
-        } catch (e) {
-            console.error('Erro ao desconectar WhatsApp:', e);
-        }
-    }
-}
-
-function openQRModal() {
-    const modal = document.getElementById('qr-modal');
-    modal.style.display = 'block';
-    const eventSource = new EventSource('/api/whatsapp/qr');
-    eventSource.onmessage = function (event) {
-        // event.data contains base64 image data URL for QR code
-        const img = new Image();
-        img.src = event.data;
-        const canvas = document.getElementById('qr-canvas');
-        const ctx = canvas.getContext('2d');
-        img.onload = function () {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-        };
-    };
-    eventSource.onerror = function () {
-        eventSource.close();
-    };
-    // When QR is scanned, server will close SSE; listen for close event
-    eventSource.addEventListener('close', () => {
-        eventSource.close();
-        closeQRModal();
-        fetchWhatsAppStatus();
-    });
-}
-
-function closeQRModal() {
-    const modal = document.getElementById('qr-modal');
-    modal.style.display = 'none';
-    // Clear canvas
-    const canvas = document.getElementById('qr-canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-// Initial status fetch on page load
-document.addEventListener('DOMContentLoaded', fetchWhatsAppStatus);
-
-if (origin === 'Site') {
-    source = 'Site';
-    campaign = 'Google ADS';
-} else if (origin === 'Instagram') {
-    source = 'Redes Sociais';
-    campaign = 'Tráfego Pago';
-} else {
-    source = overrides.source || document.getElementById('sourceSelect').value;
-    campaign = overrides.campaign || document.getElementById('campaignSelect').value;
-}
-const stage = overrides.stage || document.getElementById('stageSelect').value;
-// Date range
-const startDate = overrides.startDate || document.getElementById('startDate').value;
-const endDate = overrides.endDate || document.getElementById('endDate').value;
-
-const filters = {
-    origin,
-    source,
-    campaign,
-    stage,
-    ...(startDate && { start_date: startDate }),
-    ...(endDate && { end_date: endDate }),
-    ...overrides // Overrides take precedence (e.g. click on chart)
-};
-
-// Remove empty filters
-Object.keys(filters).forEach(key => filters[key] === undefined || filters[key] === '' ? delete filters[key] : {});
-
-// Update global dashboard with all filters
-await updateDashboard(filters);
-}
-
-
-
-
-// duplicate filter logic removed
-if (origin === 'Site') {
-    source = 'Site';
-    campaign = 'Google ADS';
-} else if (origin === 'Instagram') {
-    source = 'Redes Sociais';
-    campaign = 'Tráfego Pago';
-} else {
-    source = overrides.source || document.getElementById('sourceSelect').value;
-    campaign = overrides.campaign || document.getElementById('campaignSelect').value;
-}
-const stage = overrides.stage || document.getElementById('stageSelect').value;
-
-const filters = {
-    origin,
-    source,
-    campaign,
-    stage,
-    ...overrides // Overrides take precedence (e.g. click on chart)
-};
-
-// Remove empty filters
-Object.keys(filters).forEach(key => filters[key] === undefined || filters[key] === '' ? delete filters[key] : {});
-
-// Update global dashboard with all filters
-await updateDashboard(filters);
-}
 
 function renderTable(leads) {
     const tbody = document.getElementById('leadsTableBody');

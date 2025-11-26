@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const QRCode = require('qrcode');
 
 const cnpjService = require('./services/cnpjService');
 const validationService = require('./services/validationService');
@@ -298,20 +299,74 @@ app.get('/api/dashboard/funnel', async (req, res) => {
     }
 });
 
-// Start server and initialize WhatsApp (Márcia)
+// --- WhatsApp Integration Endpoints ---
+
+// Get connection status
+app.get('/api/whatsapp/status', (req, res) => {
+    res.json(whatsappService.getStatus());
+});
+
+// Disconnect
+app.post('/api/whatsapp/disconnect', async (req, res) => {
+    try {
+        await whatsappService.disconnect();
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Erro ao desconectar WhatsApp:', error);
+        res.status(500).json({ error: 'Erro ao desconectar' });
+    }
+});
+
+// QR Code Stream (SSE)
+app.get('/api/whatsapp/qr', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const sendQR = async (qr) => {
+        try {
+            const url = await QRCode.toDataURL(qr);
+            res.write(`data: ${url}\n\n`);
+        } catch (err) {
+            logger.error('Erro ao gerar QR Code:', err);
+        }
+    };
+
+    // Registra callback
+    whatsappService.setQRCallback(sendQR);
+
+    // Se não estiver conectado, força geração de novo QR
+    if (!whatsappService.isConnected) {
+        whatsappService.initialize().catch(console.error);
+    }
+
+    req.on('close', () => {
+        whatsappService.setQRCallback(null);
+    });
+});
+
+// Start server and initialize services
 app.listen(PORT, async () => {
     logger.info(`🚀 Servidor rodando na porta ${PORT}`);
     logger.info(`📊 Dashboard: http://localhost:${PORT}`);
     logger.info(`🔌 Webhook endpoint: http://localhost:${PORT}/webhook/lead`);
-    logger.info(`✅ RD Station configurado: ${rdStationService.isConfigured() ? 'SIM' : 'NÃO (modo teste)'}`);
+
     try {
+        // 1. Initialize Database
+        logger.info('📦 Inicializando banco de dados...');
+        await databaseService.init();
+
+        // 2. Load Knowledge Base
         logger.info('📚 Carregando Base de Conhecimento...');
         await knowledgeBaseService.loadKnowledgeBase();
 
+        // 3. Initialize WhatsApp (Márcia)
         logger.info('🤖 Inicializando Márcia (WhatsApp Agent)...');
         await whatsappService.initialize();
+
+        logger.info(`✅ RD Station configurado: ${rdStationService.isConfigured() ? 'SIM' : 'NÃO (modo teste)'}`);
+
     } catch (error) {
-        logger.error('❌ Erro ao inicializar WhatsApp:', error.message);
-        logger.warn('⚠️ Servidor continuará sem WhatsApp. Configure OPENAI_API_KEY no .env para ativar.');
+        logger.error('❌ Erro fatal na inicialização:', error);
     }
 });

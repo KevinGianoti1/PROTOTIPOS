@@ -390,12 +390,455 @@ tr:last-child td {
         grid-template-columns: 1fr;
     }
 
+    .temp-card:hover {
+        transform: translateY(-4px);
+    }
+
+    .temp-hot {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .temp-warm {
+        background: rgba(251, 169, 76, 0.1);
+        border-color: rgba(251, 169, 76, 0.3);
+    }
+
+    .temp-cold {
+        background: rgba(96, 165, 250, 0.1);
+        border-color: rgba(96, 165, 250, 0.3);
+    }
+
+    .temp-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .temp-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+    }
+
+    .temp-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    /* Charts Grid */
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .card-header h2 {
+        font-size: 1.125rem;
+        font-weight: 600;
+    }
+
+    .period {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        background: var(--border-color);
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+    }
+
+    .btn-refresh {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.25rem;
+        transition: transform 0.2s;
+    }
+
+    .btn-refresh:hover {
+        transform: rotate(180deg);
+    }
+
+    /* Chart */
+    .chart-card {
+        height: 400px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chart-container {
+        flex: 1;
+        position: relative;
+        min-height: 0;
+    }
+
+    /* Table */
     .table-container {
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th {
+        text-align: left;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+        padding: 1rem 0;
+        font-size: 0.875rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    .badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-initial {
+        background: rgba(59, 130, 246, 0.1);
+        color: #60A5FA;
+    }
+
+    .badge-collecting {
+        background: rgba(245, 158, 11, 0.1);
+        color: #FBBF24;
+    }
+
+    .badge-completed {
+        background: rgba(16, 185, 129, 0.1);
+        color: #34D399;
+    }
+
+    .badge-disqualified {
+        background: rgba(239, 68, 68, 0.1);
+        color: #F87171;
+    }
+
+    /* Lead Score Badges */
+    .score-high {
+        color: var(--success-color);
+        font-weight: 700;
+    }
+
+    .score-medium {
+        color: var(--warning-color);
+        font-weight: 700;
+    }
+
+    .score-low {
+        color: var(--danger-color);
+        font-weight: 700;
+    }
+
+    /* Temperature Badges in Table */
+    .badge-quente {
+        background: rgba(239, 68, 68, 0.15);
+        color: #F87171;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
         font-size: 0.75rem;
     }
 
-    th,
-    td {
-        padding: 0.5rem;
+    .badge-morno {
+        background: rgba(251, 169, 76, 0.15);
+        color: #FBBF24;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
     }
-}
+
+    .badge-frio {
+        background: rgba(96, 165, 250, 0.15);
+        color: #60A5FA;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .temperature-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .temp-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .temp-hot {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .temp-warm {
+            background: rgba(251, 169, 76, 0.1);
+            border-color: rgba(251, 169, 76, 0.3);
+        }
+
+        .temp-cold {
+            background: rgba(96, 165, 250, 0.1);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+
+        .temp-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .temp-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .temp-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .period {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: var(--border-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+        }
+
+        .btn-refresh {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.25rem;
+            transition: transform 0.2s;
+        }
+
+        .btn-refresh:hover {
+            transform: rotate(180deg);
+        }
+
+        /* Chart */
+        .chart-card {
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 1rem 0;
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-initial {
+            background: rgba(59, 130, 246, 0.1);
+            color: #60A5FA;
+        }
+
+        .badge-collecting {
+            background: rgba(245, 158, 11, 0.1);
+            color: #FBBF24;
+        }
+
+        .badge-completed {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34D399;
+        }
+
+        .badge-disqualified {
+            background: rgba(239, 68, 68, 0.1);
+            color: #F87171;
+        }
+
+        /* Lead Score Badges */
+        .score-high {
+            color: var(--success-color);
+            font-weight: 700;
+        }
+
+        .score-medium {
+            color: var(--warning-color);
+            font-weight: 700;
+        }
+
+        .score-low {
+            color: var(--danger-color);
+            font-weight: 700;
+        }
+
+        /* Temperature Badges in Table */
+        .badge-quente {
+            background: rgba(239, 68, 68, 0.15);
+            color: #F87171;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .badge-morno {
+            background: rgba(251, 169, 76, 0.15);
+            color: #FBBF24;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .badge-frio {
+            background: rgba(96, 165, 250, 0.15);
+            color: #60A5FA;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .temperature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-container {
+                font-size: 0.75rem;
+            }
+
+            th,
+            td {
+                padding: 0.5rem;
+            }
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            width: 80%;
+            max-width: 400px;
+            border-radius: 8px;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .close {
+            color: var(--text-secondary);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            right: 15px;
+            top: 10px;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: var(--text-primary);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        #qr-canvas {
+            margin-top: 20px;
+            max-width: 100%;
+            border-radius: 8px;
+        }
