@@ -62,24 +62,38 @@ class MarciaAgentService {
             const assistantMessage = completion.choices[0].message.content;
             // Salva resposta
             await databaseService.addMessage(phoneNumber, 'assistant', assistantMessage);
-            // Extrai dados estruturados
+
+            // Extrai dados da resposta da IA
             const extractedData = this.extractDataFromResponse(assistantMessage);
+            // Também extrai dados da mensagem do usuário
+            const userExtractedData = this.extractDataFromResponse(message);
+            // Combina os dados
+            const combinedData = { ...userExtractedData, ...extractedData };
+
             // Atualiza contato
             const currentData = contact.data_cache || {};
-            const updatedData = { ...currentData, ...extractedData };
-            await databaseService.updateContact(phoneNumber, {
+            const updatedData = { ...currentData, ...combinedData };
+
+            // Prepara campos para atualização
+            const updateFields = {
                 data_cache: updatedData,
-                ...(extractedData.cnpj && { cnpj: extractedData.cnpj }),
-                ...(extractedData.name && { name: extractedData.name }),
-                ...(extractedData.email && { email: extractedData.email }),
-                ...(extractedData.origin && { origin: extractedData.origin }),
-                ...(extractedData.campaign && { campaign: extractedData.campaign }),
-                ...(extractedData.source && { source: extractedData.source }),
-                ...(extractedData.product && { produto_interesse: extractedData.product }),
-                ...(extractedData.quantity && { quantidade_estimada: extractedData.quantity }),
-                ...(extractedData.prazo && { prazo_compra: extractedData.prazo }),
                 ultima_interacao: new Date().toISOString()
-            });
+            };
+
+            // Atualiza campos individuais se presentes
+            if (combinedData.cnpj) {
+                updateFields.cnpj = combinedData.cnpj.replace(/\D/g, ''); // Remove formatação
+            }
+            if (combinedData.name) updateFields.name = combinedData.name;
+            if (combinedData.email) updateFields.email = combinedData.email;
+            if (combinedData.origin) updateFields.origin = combinedData.origin;
+            if (combinedData.campaign) updateFields.campaign = combinedData.campaign;
+            if (combinedData.source) updateFields.source = combinedData.source;
+            if (combinedData.product) updateFields.produto_interesse = combinedData.product;
+            if (combinedData.quantity) updateFields.quantidade_estimada = combinedData.quantity;
+            if (combinedData.prazo) updateFields.prazo_compra = combinedData.prazo;
+
+            await databaseService.updateContact(phoneNumber, updateFields);
 
             // Calcula lead score após atualização
             try {
@@ -87,9 +101,16 @@ class MarciaAgentService {
             } catch (scoreError) {
                 logger.warn('Erro ao calcular score:', scoreError);
             }
-            // Se coleta completa, processa lead
-            if (extractedData.ready) {
-                logger.info('✅ Coleta completa para', phoneNumber);
+
+            // Recarrega contato atualizado
+            const updatedContact = await databaseService.getContact(phoneNumber);
+
+            // Processa lead se: (1) marcado como ready OU (2) usuário confirmou E tem dados mínimos
+            const hasMinimalData = updatedContact.cnpj && updatedContact.name;
+            const shouldProcess = combinedData.ready || (combinedData.confirmed && hasMinimalData);
+
+            if (shouldProcess) {
+                logger.info('✅ Coleta completa para', phoneNumber, '- Processando lead...');
                 await this.processCompleteLead(phoneNumber, updatedData);
             }
             return assistantMessage;
@@ -192,31 +213,48 @@ class MarciaAgentService {
         const jsonMatch = response.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             try {
-                return JSON.parse(jsonMatch[0]);
+                const parsed = JSON.parse(jsonMatch[0]);
+                // Remove asteriscos dos valores
+                Object.keys(parsed).forEach(key => {
+                    if (typeof parsed[key] === 'string') {
+                        parsed[key] = parsed[key].replace(/\*\*/g, '').trim();
+                    }
+                });
+                return parsed;
             } catch (e) {
                 // continua com regex
             }
         }
+
+        // Padrões melhorados para capturar dados com ou sem asteriscos
         const patterns = {
-            cnpj: /CNPJ[:\s]+([0-9.\/\-]{14,18})/i,
-            name: /Nome(?:\s+da\s+empresa)?[:\s]+([^\n]+)/i,
-            phone: /Telefone[:\s]+([0-9\s\-\(\)]+)/i,
-            email: /E[-]?mail[:\s]+([^\s\n]+@[^\s\n]+)/i,
-            origin: /Origem(?:\s+do\s+contato)?[:\s]+([^\n]+)/i,
-            source: /Fonte(?:\s+do\s+contato)?[:\s]+([^\n]+)/i,
-            campaign: /Campanha[:\s]+([^\n]+)/i,
-            product: /Produto[:\s]+([^\n]+)/i,
-            quantity: /Quantidade[:\s]+([0-9]+)/i,
-            prazo: /Prazo(?:\s+de\s+compra)?[:\s]+([^\n]+)/i
+            cnpj: /(?:CNPJ|cnpj)[:\s*]+\*?\*?([0-9.\/\-]{14,18})\*?\*?/i,
+            name: /(?:Nome|empresa)[:\s*]+\*?\*?([^\n*]+?)\*?\*?(?:\n|$)/i,
+            phone: /(?:Telefone|WhatsApp)[:\s*]+\*?\*?([0-9\s\-\(\)]+?)\*?\*?(?:\n|$)/i,
+            email: /(?:E[-]?mail)[:\s*]+\*?\*?([^\s\n*]+@[^\s\n*]+?)\*?\*?(?:\n|$)/i,
+            origin: /(?:Origem)[:\s*]+\*?\*?([^\n*]+?)\*?\*?(?:\n|$)/i,
+            source: /(?:Fonte)[:\s*]+\*?\*?([^\n*]+?)\*?\*?(?:\n|$)/i,
+            campaign: /(?:Campanha)[:\s*]+\*?\*?([^\n*]+?)\*?\*?(?:\n|$)/i,
+            product: /(?:Interesse|Produto)[:\s*]+\*?\*?([^\n*]+?)\*?\*?(?:\n|$)/i,
+            quantity: /(?:Quantidade)[:\s*]+\*?\*?([0-9]+)/i,
+            prazo: /(?:Prazo)[:\s*]+\*?\*?([^\n*]+?)\*?\*?(?:\n|$)/i
         };
+
         for (const [key, regex] of Object.entries(patterns)) {
             const match = response.match(regex);
             if (match) {
                 let value = match[1].trim();
-                value = value.replace(/^(do\s+contato:\s*|de\s+compra:\s*)/i, '');
+                // Remove asteriscos e prefixos
+                value = value.replace(/\*\*/g, '').replace(/^(do\s+contato:\s*|de\s+compra:\s*)/i, '').trim();
                 data[key] = value;
             }
         }
+
+        // Detecta confirmação do usuário
+        if (/\b(está|tudo|sim|correto|certo|ok|confirmo|confirmar)\b/i.test(response)) {
+            data.confirmed = true;
+        }
+
         if (data.cnpj && data.name && data.phone) {
             data.ready = true;
         }
