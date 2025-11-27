@@ -17,6 +17,8 @@ class WhatsAppService {
     constructor() {
         this.client = null;
         this.isReady = false;
+        this.messageTimers = {}; // Para debouncing de mensagens
+        this.messageBuffers = {}; // Buffer de mensagens recentes por contato (sliding window)
     }
 
     /**
@@ -32,6 +34,17 @@ class WhatsAppService {
      */
     async initialize() {
         try {
+            if (this.client) {
+                logger.info('⚠️ Cliente anterior detectado. Destruindo para reiniciar...');
+                try {
+                    await this.client.destroy();
+                } catch (e) {
+                    logger.warn('Erro ao destruir cliente anterior:', e);
+                }
+                this.client = null;
+                this.isReady = false;
+            }
+
             logger.info('🔄 Inicializando WhatsApp...');
 
             this.client = new Client({
@@ -133,13 +146,50 @@ class WhatsAppService {
 
             // Sanitiza o número (remove sufixos como @c.us, @lid e mantém apenas dígitos)
             const phoneNumber = message.from.replace(/\D/g, '');
-            let messageContent = message.body;
 
-            logger.info(`📩 Mensagem recebida de ${phoneNumber}: "${message.type}"`);
+            // Inicializa buffer para este contato se não existir
+            if (!this.messageBuffers[phoneNumber]) {
+                this.messageBuffers[phoneNumber] = [];
+            }
 
-            // Tratamento de Áudio (PTT - Push to Talk)
-            if (message.type === 'ptt' || message.type === 'audio') {
-                try {
+            // Adiciona mensagem ao buffer (mantém últimas 3 mensagens)
+            this.messageBuffers[phoneNumber].push({
+                content: message.body,
+                timestamp: Date.now()
+            });
+
+            // Mantém apenas as últimas 3 mensagens (sliding window)
+            if (this.messageBuffers[phoneNumber].length > 3) {
+                this.messageBuffers[phoneNumber].shift();
+            }
+
+            // DEBOUNCING: Aguarda 3 segundos para permitir múltiplas mensagens do usuário
+            if (this.messageTimers[phoneNumber]) {
+                clearTimeout(this.messageTimers[phoneNumber]);
+            }
+
+            this.messageTimers[phoneNumber] = setTimeout(async () => {
+                await this.processUserMessage(phoneNumber, message);
+                delete this.messageTimers[phoneNumber];
+                // Limpa buffer após processar
+                this.messageBuffers[phoneNumber] = [];
+            }, 3000);
+
+        } catch (error) {
+            logger.error('❌ Erro ao processar mensagem:', error);
+
+            // Envia mensagem de erro genérica
+            try {
+                await message.reply(
+                    'Ops! Tive um probleminha aqui 😅 Pode tentar de novo em alguns segundos?'
+                );
+            } catch (replyError) {
+                logger.error('❌ Erro ao enviar mensagem de erro:', replyError);
+            }
+        }
+    }
+
+    /**
                     logger.info('🎤 Áudio recebido, baixando...');
                     const media = await message.downloadMedia();
 
@@ -188,6 +238,12 @@ class WhatsAppService {
 
             // Envia para o agente Márcia processar
             let response = await marciaAgentService.processMessage(phoneNumber, messageContent);
+
+            // Remove tag [COMPLETE] e JSON (dados internos, não devem aparecer para o usuário)
+            if (response && response.includes('[COMPLETE]')) {
+                response = response.replace(/\[COMPLETE\]\{[^\}]+\}/g, '').trim();
+                logger.info('🎯 Tag [COMPLETE] removida da resposta');
+            }
 
             // Verifica se deve enviar catálogo
             if (response && response.includes('[SEND_CATALOG]')) {

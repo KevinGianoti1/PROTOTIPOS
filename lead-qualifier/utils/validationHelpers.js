@@ -87,5 +87,13 @@ function validateEmail(email) {
 module.exports = {
     formatPhoneNumber,
     validateCNPJ,
-    validateEmail
+    validateEmail,
+    extractEmail: (text) => {
+        const match = text.match(/[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+/i);
+        return match ? match[0] : null;
+    },
+    extractCNPJ: (text) => {
+        const match = text.match(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/);
+        return match ? match[0].replace(/\D/g, '') : null;
+    }
 };
