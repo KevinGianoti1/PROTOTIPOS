@@ -12,6 +12,7 @@ const leadScoringService = require('./leadScoringService');
 const { formatPhoneNumber, validateCNPJ, validateEmail, extractEmail, extractCNPJ } = require('../utils/validationHelpers');
 const auditLogger = require('../utils/auditLogger');
 const { containsProfanity, containsSensitiveData } = require('../utils/contentFilter');
+const { normalizeOrigin } = require('../utils/originNormalizer');
 
 /**
  * Serviço do Agente Márcia
@@ -234,7 +235,7 @@ class MarciaAgentService {
             }
             if (combinedData.name) updateFields.name = combinedData.name;
             if (combinedData.email) updateFields.email = combinedData.email;
-            if (combinedData.origin) updateFields.origin = combinedData.origin;
+            if (combinedData.origin) updateFields.origin = normalizeOrigin(combinedData.origin);
             if (combinedData.campaign) updateFields.campaign = combinedData.campaign;
             if (combinedData.source) updateFields.source = combinedData.source;
             if (combinedData.product) updateFields.produto_interesse = combinedData.product;
