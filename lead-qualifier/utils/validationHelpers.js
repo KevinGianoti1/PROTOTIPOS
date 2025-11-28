@@ -93,7 +93,8 @@ module.exports = {
         return match ? match[0] : null;
     },
     extractCNPJ: (text) => {
-        const match = text.match(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/);
+        // Tenta capturar CNPJ formatado ou sequência de 13 a 15 dígitos
+        const match = text.match(/(?:\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})|(?:\b\d{13,15}\b)/);
         return match ? match[0].replace(/\D/g, '') : null;
     }
 };
