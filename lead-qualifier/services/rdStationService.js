@@ -226,7 +226,8 @@ class RDStationService {
             if (origem.includes('instagram') || origem.includes('insta')) {
                 dealSourceId = '63d81a9a732aa3001738fd73'; // Redes Sociais
                 campaignId = '64b82d4019f6fc001c8c89bb'; // Tráfego Pago
-            } else if (origem.includes('site') || origem.includes('google')) {
+            } else {
+                // Default para Site (Google/Busca/Outros)
                 dealSourceId = '6478af40d3422a0012d73a7e'; // Site
                 campaignId = '68cd8a3eebdea4001c02960f'; // Google ADS
             }
