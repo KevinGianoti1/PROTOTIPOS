@@ -190,10 +190,34 @@ class WhatsAppService {
     }
 
     /**
-                    logger.info('🎤 Áudio recebido, baixando...');
-                    const media = await message.downloadMedia();
+     * Processa o lote de mensagens do usuário (após debounce)
+     * @param {string} phoneNumber 
+     * @param {Object} lastMessage - Último objeto de mensagem recebido (para responder ao correto)
+     */
+    async processUserMessage(phoneNumber, lastMessage) {
+        try {
+            // Recupera mensagens do buffer
+            const buffer = this.messageBuffers[phoneNumber] || [];
+            if (buffer.length === 0) return;
 
-                    if (media) {
+            // Combina as mensagens em uma única string
+            // Ordena por timestamp garantindo a ordem cronológica
+            const sortedMessages = buffer.sort((a, b) => a.timestamp - b.timestamp);
+            const combinedText = sortedMessages.map(m => m.content).join(' ').trim(); // Usa espaço para juntar frases picadas
+
+            logger.info(`📨 Processando lote de ${buffer.length} mensagens de ${phoneNumber}`);
+            logger.info(`   Texto combinado: "${combinedText}"`);
+
+            let messageContent = combinedText;
+
+            // Lógica de Áudio (Se a última mensagem for áudio)
+            // Nota: O buffer atual foca em texto. Se houver áudio, processamos o áudio da última mensagem.
+            if (lastMessage.hasMedia) {
+                try {
+                    const media = await lastMessage.downloadMedia();
+                    if (media && media.mimetype.includes('audio')) {
+                        logger.info('🎤 Áudio recebido, baixando...');
+
                         // Garante que a pasta temp existe
                         const tempDir = path.join(__dirname, '../temp');
                         if (!fs.existsSync(tempDir)) {
@@ -205,28 +229,29 @@ class WhatsAppService {
                         const filePath = path.join(tempDir, fileName);
 
                         fs.writeFileSync(filePath, media.data, 'base64');
-                        logger.info('Arquivo de áudio salvo:', filePath);
 
-                        // Envia feedback para o usuário
-                        await message.reply('(Ouvindo seu áudio...) 🎧');
+                        // Envia feedback
+                        await lastMessage.reply('(Ouvindo seu áudio...) 🎧');
 
                         // Transcreve
-                        messageContent = await marciaAgentService.transcribeAudio(filePath);
+                        const transcription = await marciaAgentService.transcribeAudio(filePath);
 
-                        // Remove arquivo temporário
+                        // Se tiver texto combinado + áudio, junta os dois
+                        messageContent = messageContent ? `${messageContent} [Transcrição: ${transcription}]` : transcription;
+
+                        // Limpa arquivo
                         fs.unlinkSync(filePath);
 
-                        // Marca que recebeu áudio
-                        await databaseService.updateContact(phoneNumber, {
-                            audio_recebido: true
-                        });
+                        await databaseService.updateContact(phoneNumber, { audio_recebido: true });
                     }
-                } catch (error) {
-                    logger.error('Erro ao processar áudio:', error);
-                    await message.reply('Tive um problema para ouvir seu áudio 😔 Pode escrever?');
-                    return;
+                } catch (audioError) {
+                    logger.error('Erro ao processar áudio:', audioError);
+                    await lastMessage.reply('Tive um problema para ouvir seu áudio 😔 Pode escrever?');
                 }
             }
+
+            // Se não tiver conteúdo (ex: imagem sem legenda e sem áudio), ignora
+            if (!messageContent) return;
 
             // Incrementa contador de mensagens
             const contact = await databaseService.getContact(phoneNumber);
@@ -239,7 +264,7 @@ class WhatsAppService {
             // Envia para o agente Márcia processar
             let response = await marciaAgentService.processMessage(phoneNumber, messageContent);
 
-            // Remove tag [COMPLETE] e JSON (dados internos, não devem aparecer para o usuário)
+            // Remove tag [COMPLETE] e JSON (dados internos)
             if (response && response.includes('[COMPLETE]')) {
                 response = response.replace(/\[COMPLETE\]\{[^\}]+\}/g, '').trim();
                 logger.info('🎯 Tag [COMPLETE] removida da resposta');
@@ -250,9 +275,9 @@ class WhatsAppService {
                 logger.info('📂 Detectado pedido de catálogo');
                 response = response.replace('[SEND_CATALOG]', '').trim();
 
-                // Envia a resposta de texto primeiro (sem a tag)
+                // Envia a resposta de texto primeiro
                 if (response) {
-                    await message.reply(response);
+                    await lastMessage.reply(response);
                 }
 
                 // Envia o link do Google Drive
@@ -261,29 +286,17 @@ class WhatsAppService {
                     'https://drive.google.com/file/d/1SrZblBiGp6qjdRh9OVnoybwgRVQpJezj/view?usp=sharing\n\n' +
                     'Qualquer dúvida, estou à disposição! 😊';
 
-                await message.reply(catalogMessage);
-                logger.info('✅ Link do catálogo enviado');
+                await lastMessage.reply(catalogMessage);
 
-                // Marca que enviou catálogo
-                await databaseService.updateContact(phoneNumber, {
-                    catalogo_enviado: true
-                });
+                await databaseService.updateContact(phoneNumber, { catalogo_enviado: true });
             } else if (response) {
-                await message.reply(response);
+                await lastMessage.reply(response);
                 logger.info(`📤 Resposta enviada para ${phoneNumber}`);
             }
 
         } catch (error) {
-            logger.error('❌ Erro ao processar mensagem:', error);
-
-            // Envia mensagem de erro genérica
-            try {
-                await message.reply(
-                    'Ops! Tive um probleminha aqui 😅 Pode tentar de novo em alguns segundos?'
-                );
-            } catch (replyError) {
-                logger.error('❌ Erro ao enviar mensagem de erro:', replyError);
-            }
+            logger.error('❌ Erro no processUserMessage:', error);
+            await lastMessage.reply('Ops! Tive um probleminha aqui 😅 Pode repetir?');
         }
     }
 

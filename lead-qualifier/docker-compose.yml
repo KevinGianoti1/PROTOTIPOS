@@ -5,7 +5,11 @@ services:
     build: .
     ports:
       - "3000:3000"
-    environment:
-      - RD_STATION_API_TOKEN=${RD_STATION_API_TOKEN}
-      - PORT=3000
-    restart: always
+    volumes:
+      - ./.wwebjs_auth:/app/.wwebjs_auth
+      - ./.wwebjs_cache:/app/.wwebjs_cache
+      - ./database.sqlite:/app/database.sqlite
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    restart: unless-stopped

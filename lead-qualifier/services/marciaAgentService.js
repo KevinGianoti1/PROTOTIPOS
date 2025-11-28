@@ -164,7 +164,7 @@ class MarciaAgentService {
 
             // Chama OpenAI
             const completion = await this.openai.chat.completions.create({
-                model: 'gpt-4o-mini',
+                model: 'gpt-4o', // Upgrade para GPT-4o (Turbo Class) para melhor contexto
                 messages: [{ role: 'system', content: this.getSystemPrompt(context, memory) }, ...history],
                 temperature: 0.7,
                 max_tokens: 1200
@@ -505,6 +505,11 @@ ${context}
   quantity: 200
   prazo: semana que vem
   [/DATA]
+
+⚡ **AGILIDADE (PERGUNTAS COMPOSTAS):**
+Para ser mais eficiente com clientes objetivos, tente agrupar perguntas relacionadas quando fizer sentido.
+Exemplo: Em vez de perguntar a quantidade e depois o prazo, pergunte:
+"Qual a quantidade média que você costuma comprar e qual o prazo que você tem em mente? 😊"
 
 📋 A Maxi Force atende apenas empresas (distribuidores, revendedores e lojistas).  
 Não trabalha com consumidores finais.  
