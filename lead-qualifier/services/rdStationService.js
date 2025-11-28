@@ -221,10 +221,12 @@ class RDStationService {
 
             // Determina Source e Campaign baseado na origem
             let dealSourceId, campaignId;
-            if (lead.origem === 'Instagram') {
+            const origem = lead.origem ? lead.origem.toLowerCase() : '';
+
+            if (origem.includes('instagram') || origem.includes('insta')) {
                 dealSourceId = '63d81a9a732aa3001738fd73'; // Redes Sociais
                 campaignId = '64b82d4019f6fc001c8c89bb'; // Tráfego Pago
-            } else if (lead.origem === 'Site') {
+            } else if (origem.includes('site') || origem.includes('google')) {
                 dealSourceId = '6478af40d3422a0012d73a7e'; // Site
                 campaignId = '68cd8a3eebdea4001c02960f'; // Google ADS
             }

@@ -273,20 +273,23 @@ class WhatsAppService {
             // Verifica se deve enviar catálogo
             if (response && response.includes('[SEND_CATALOG]')) {
                 logger.info('📂 Detectado pedido de catálogo');
-                response = response.replace('[SEND_CATALOG]', '').trim();
+                response = response.replace(/\[SEND_CATALOG\]/g, '').trim();
 
                 // Envia a resposta de texto primeiro
                 if (response) {
                     await lastMessage.reply(response);
                 }
 
-                // Envia o link do Google Drive
-                const catalogMessage = '📘 *Catálogo Maxi Force*\n\n' +
-                    'Aqui está nosso catálogo completo de produtos:\n' +
-                    'https://drive.google.com/file/d/1SrZblBiGp6qjdRh9OVnoybwgRVQpJezj/view?usp=sharing\n\n' +
-                    'Qualquer dúvida, estou à disposição! 😊';
+                // Verifica se a resposta já contém o link do catálogo (para evitar duplicidade)
+                if (!response.includes('drive.google.com')) {
+                    // Envia o link do Google Drive apenas se não estiver na mensagem
+                    const catalogMessage = '📘 *Catálogo Maxi Force*\n\n' +
+                        'Aqui está nosso catálogo completo de produtos:\n' +
+                        'https://drive.google.com/file/d/1SrZblBiGp6qjdRh9OVnoybwgRVQpJezj/view?usp=sharing\n\n' +
+                        'Qualquer dúvida, estou à disposição! 😊';
 
-                await lastMessage.reply(catalogMessage);
+                    await lastMessage.reply(catalogMessage);
+                }
 
                 await databaseService.updateContact(phoneNumber, { catalogo_enviado: true });
             } else if (response) {
