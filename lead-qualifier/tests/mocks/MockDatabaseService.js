@@ -43,7 +43,31 @@ class MockDatabaseService {
                 flagged_for_moderation BOOLEAN DEFAULT 0,
                 catalogo_enviado BOOLEAN DEFAULT 0,
                 audio_recebido BOOLEAN DEFAULT 0,
-                total_mensagens INTEGER DEFAULT 0
+                total_mensagens INTEGER DEFAULT 0,
+                -- Campos adicionais usados pelo MarciaAgentService
+                produto_interesse TEXT,
+                quantidade_estimada TEXT,
+                prazo_compra TEXT,
+                lead_score INTEGER DEFAULT 0,
+                temperatura TEXT,
+                motivo_desqualificacao TEXT,
+                cnae_valido BOOLEAN,
+                cnae_principal TEXT,
+                cnae_descricao TEXT,
+                porte_empresa TEXT,
+                capital_social REAL,
+                data_abertura TEXT,
+                situacao_cadastral TEXT,
+                logradouro TEXT,
+                numero TEXT,
+                complemento TEXT,
+                bairro TEXT,
+                cidade TEXT,
+                estado TEXT,
+                cep TEXT,
+                razao_social TEXT,
+                nome_fantasia TEXT,
+                cnpj_confirmed BOOLEAN DEFAULT 0
             )
         `);
 
