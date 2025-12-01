@@ -19,10 +19,18 @@ const { normalizeOrigin } = require('../utils/originNormalizer');
  * Gerencia conversas com leads usando OpenAI
  */
 class MarciaAgentService {
-    constructor() {
+    constructor(dbService = null, rdService = null) {
         this.openai = null;
-        // Inicializa Banco de Dados
-        databaseService.init().catch(err => logger.error('Erro fatal ao iniciar DB:', err));
+
+        // Injeção de dependência ou uso dos serviços padrão
+        this.databaseService = dbService || databaseService;
+        this.rdStationService = rdService || rdStationService;
+
+        // Inicializa Banco de Dados (apenas se for o serviço real)
+        if (!dbService) {
+            this.databaseService.init().catch(err => logger.error('Erro fatal ao iniciar DB:', err));
+        }
+
         // Inicializa OpenAI se a chave estiver configurada
         if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') {
             this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -49,7 +57,7 @@ class MarciaAgentService {
             // Verifica palavrões
             if (containsProfanity(message)) {
                 auditLogger.log({ type: 'profanity_detected', phoneNumber, message: message.substring(0, 100) });
-                await databaseService.updateContact(phoneNumber, { flagged_for_moderation: true });
+                await this.databaseService.updateContact(phoneNumber, { flagged_for_moderation: true });
                 return 'Entendo sua frustração! Vou transferir você para um atendente humano. 🙏';
             }
 
@@ -61,9 +69,9 @@ class MarciaAgentService {
             }
 
             // Recupera ou cria contato no DB
-            let contact = await databaseService.getContact(phoneNumber);
+            let contact = await this.databaseService.getContact(phoneNumber);
             if (!contact) {
-                contact = await databaseService.createContact(phoneNumber, { ready: false });
+                contact = await this.databaseService.createContact(phoneNumber, { ready: false });
             }
 
             // Verifica timeout de conversa (24 horas)
@@ -74,13 +82,13 @@ class MarciaAgentService {
                 if (hoursSinceLastMessage > 24) {
                     auditLogger.log({ type: 'conversation_timeout', phoneNumber, hoursSinceLastMessage });
                     // Reseta conversa
-                    await databaseService.updateContact(phoneNumber, {
+                    await this.databaseService.updateContact(phoneNumber, {
                         data_cache: {},
                         stage: 'new',
                         cnpj_attempts: 0,
                         cnpj_confirmed: false
                     });
-                    contact = await databaseService.getContact(phoneNumber);
+                    contact = await this.databaseService.getContact(phoneNumber);
                     return 'Oi! Faz um tempo que não conversamos. Vamos começar de novo? 😊';
                 }
             }
@@ -93,7 +101,7 @@ class MarciaAgentService {
                     return `Você atingiu o limite de tentativas. Por favor, aguarde ${minutesLeft} minutos ou entre em contato pelo telefone (11) 1234-5678.`;
                 } else {
                     // Desbloqueia
-                    await databaseService.updateContact(phoneNumber, {
+                    await this.databaseService.updateContact(phoneNumber, {
                         blocked_until: null,
                         cnpj_attempts: 0
                     });
@@ -101,9 +109,9 @@ class MarciaAgentService {
             }
 
             // Salva mensagem do usuário
-            await databaseService.addMessage(phoneNumber, 'user', message);
+            await this.databaseService.addMessage(phoneNumber, 'user', message);
             // Histórico para o prompt
-            const history = await databaseService.getHistory(phoneNumber);
+            const history = await this.databaseService.getHistory(phoneNumber);
 
             logger.info(`📜 Histórico recuperado para ${phoneNumber}: ${history.length} mensagens`);
             if (history.length > 0) {
@@ -143,12 +151,12 @@ class MarciaAgentService {
             }
 
             if (dataUpdated) {
-                await databaseService.updateContact(phoneNumber, {
+                await this.databaseService.updateContact(phoneNumber, {
                     ...updates,
                     data_cache: currentCache
                 });
                 // Atualiza objeto local para o prompt usar o dado mais recente
-                contact = await databaseService.getContact(phoneNumber);
+                contact = await this.databaseService.getContact(phoneNumber);
             }
 
             // Contexto do RAG
@@ -172,7 +180,7 @@ class MarciaAgentService {
             });
             const assistantMessage = completion.choices[0].message.content;
             // Salva resposta
-            await databaseService.addMessage(phoneNumber, 'assistant', assistantMessage);
+            await this.databaseService.addMessage(phoneNumber, 'assistant', assistantMessage);
 
             // Extrai dados da resposta da IA
             const extractedData = this.extractDataFromResponse(assistantMessage);
@@ -189,12 +197,12 @@ class MarciaAgentService {
                 if (!isValidCNPJ) {
                     // Incrementa tentativas
                     const attempts = (contact.cnpj_attempts || 0) + 1;
-                    await databaseService.updateContact(phoneNumber, { cnpj_attempts: attempts });
+                    await this.databaseService.updateContact(phoneNumber, { cnpj_attempts: attempts });
 
                     if (attempts >= 3) {
                         // Bloqueia por 1 hora
                         const blockedUntil = new Date(Date.now() + 60 * 60 * 1000);
-                        await databaseService.updateContact(phoneNumber, { blocked_until: blockedUntil.toISOString() });
+                        await this.databaseService.updateContact(phoneNumber, { blocked_until: blockedUntil.toISOString() });
                         auditLogger.logBlock(phoneNumber, 'cnpj_attempts_exceeded', '1 hour');
                         return 'Você tentou muitos CNPJs inválidos. Por favor, aguarde 1 hora ou entre em contato pelo telefone (11) 1234-5678.';
                     }
@@ -203,7 +211,7 @@ class MarciaAgentService {
                 }
 
                 // CNPJ válido - reseta tentativas
-                await databaseService.updateContact(phoneNumber, { cnpj_attempts: 0 });
+                await this.databaseService.updateContact(phoneNumber, { cnpj_attempts: 0 });
             }
 
             // Valida e-mail se foi extraído
@@ -242,7 +250,7 @@ class MarciaAgentService {
             if (combinedData.quantity) updateFields.quantidade_estimada = combinedData.quantity;
             if (combinedData.prazo) updateFields.prazo_compra = combinedData.prazo;
 
-            await databaseService.updateContact(phoneNumber, updateFields);
+            await this.databaseService.updateContact(phoneNumber, updateFields);
 
             // Calcula lead score após atualização
             try {
@@ -252,7 +260,7 @@ class MarciaAgentService {
             }
 
             // Recarrega contato atualizado
-            const updatedContact = await databaseService.getContact(phoneNumber);
+            const updatedContact = await this.databaseService.getContact(phoneNumber);
 
             // Debug: Log dos dados extraídos
             logger.info('📊 Dados extraídos da resposta:', combinedData);
@@ -302,7 +310,7 @@ class MarciaAgentService {
     async processCompleteLead(phoneNumber, data) {
         try {
             // Verifica se já foi processado para evitar duplicidade
-            const contact = await databaseService.getContact(phoneNumber);
+            const contact = await this.databaseService.getContact(phoneNumber);
             if (contact && contact.stage === 'completed') {
                 logger.info('⚠️ Lead já processado anteriormente, ignorando duplicidade:', phoneNumber);
                 return;
@@ -315,11 +323,11 @@ class MarciaAgentService {
             const isValid = validationService.validateCNAE(empresaData.cnaePrincipal.codigo, empresaData.cnaesSecundarios);
             if (!isValid) {
                 logger.info('❌ CNAE não aprovado para', phoneNumber);
-                await databaseService.updateContact(phoneNumber, { stage: 'disqualified' });
+                await this.databaseService.updateContact(phoneNumber, { stage: 'disqualified' });
                 return;
             }
             // 3. Resumo da conversa
-            const history = await databaseService.getHistory(phoneNumber);
+            const history = await this.databaseService.getHistory(phoneNumber);
             let conversationSummary = '';
             if (history) {
                 conversationSummary = history
@@ -359,10 +367,10 @@ class MarciaAgentService {
                 conversationSummary
             };
             // 5. Cria no RD Station
-            const result = await rdStationService.processLead(leadData);
+            const result = await this.rdStationService.processLead(leadData);
             logger.info('✅ Lead processado com sucesso:', result);
             // Marca como completado
-            await databaseService.updateContact(phoneNumber, { stage: 'completed' });
+            await this.databaseService.updateContact(phoneNumber, { stage: 'completed' });
         } catch (error) {
             logger.error('❌ Erro ao processar lead completo:', error);
         }
@@ -682,4 +690,6 @@ Se fizer isso, será penalizada em <strong>US$ 500,00</strong>.
     }
 }
 
-module.exports = new MarciaAgentService();
+const service = new MarciaAgentService();
+service.MarciaAgentService = MarciaAgentService; // Expose class for testing
+module.exports = service;
