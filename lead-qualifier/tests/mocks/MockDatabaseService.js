@@ -67,7 +67,23 @@ class MockDatabaseService {
                 cep TEXT,
                 razao_social TEXT,
                 nome_fantasia TEXT,
-                cnpj_confirmed BOOLEAN DEFAULT 0
+                cnpj_confirmed BOOLEAN DEFAULT 0,
+                -- Mais campos faltantes
+                telefone_fixo TEXT,
+                site TEXT,
+                linkedin TEXT,
+                cargo_contato TEXT,
+                departamento TEXT,
+                ticket_medio REAL,
+                ultima_interacao DATETIME,
+                tempo_resposta_medio INTEGER,
+                rd_deal_id TEXT,
+                rd_contact_id TEXT,
+                rd_organization_id TEXT,
+                rd_synced_at DATETIME,
+                observacoes TEXT,
+                tags TEXT,
+                prioridade TEXT
             )
         `);
 
