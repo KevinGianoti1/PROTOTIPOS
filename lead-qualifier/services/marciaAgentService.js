@@ -349,21 +349,19 @@ class MarciaAgentService {
             logger.info('🔄 Processando lead completo:', data);
             // 1. Consulta CNPJ
             const empresaData = await cnpjService.consultarCNPJ(data.cnpj);
+
             // 2. Valida CNAE
             const isValid = validationService.validateCNAE(empresaData.cnaePrincipal.codigo, empresaData.cnaesSecundarios);
-            if (!isValid) {
-                logger.info('❌ CNAE não aprovado para', phoneNumber);
-                await this.databaseService.updateContact(phoneNumber, { stage: 'disqualified' });
-                return;
-            }
+
             // 3. Resumo da conversa
-            const history = await this.databaseService.getHistory(phoneNumber);
+            const history = await this.databaseService.getHistory(phoneNumber, contact.current_conversation_id);
             let conversationSummary = '';
             if (history) {
                 conversationSummary = history
                     .map(msg => `${msg.role === 'user' ? '👤 Cliente' : '🤖 Márcia'}: ${msg.content}`)
                     .join('\n\n');
             }
+
             // 4. Dados para RD Station
             const formattedPhone = formatPhoneNumber(data.phone || phoneNumber);
 
@@ -390,17 +388,28 @@ class MarciaAgentService {
                     telefone: empresaData.telefone.replace(/\D/g, '')
                 },
                 validacao: {
-                    qualificado: true,
-                    motivo: 'CNAE aprovado pela Márcia',
+                    qualificado: isValid, // ✨ Agora usa o resultado da validação
+                    motivo: isValid ? 'CNAE aprovado pela Márcia' : 'CNAE fora do PCI/Escopo',
                     cnaeMatch: empresaData.cnaePrincipal
                 },
                 conversationSummary
             };
-            // 5. Cria no RD Station
+
+            // 5. Cria no RD Station (SEMPRE, mesmo se desqualificado)
+            logger.info(isValid ? '✅ CNAE aprovado, criando oportunidade qualificada' : '⚠️ CNAE fora do PCI, criando oportunidade e marcando como perdida');
             const result = await this.rdStationService.processLead(leadData);
-            logger.info('✅ Lead processado com sucesso:', result);
-            // Marca como completado
-            await this.databaseService.updateContact(phoneNumber, { stage: 'completed' });
+
+            if (isValid) {
+                logger.info('✅ Lead QUALIFICADO processado com sucesso:', result);
+            } else {
+                logger.info('📊 Lead DESQUALIFICADO registrado no CRM e marcado como perdido:', result);
+            }
+
+            // Marca como completado (processado, independente de qualificação)
+            await this.databaseService.updateContact(phoneNumber, {
+                stage: 'completed',
+                rd_deal_id: result.dealId
+            });
         } catch (error) {
             logger.error('❌ Erro ao processar lead completo:', error);
         }
