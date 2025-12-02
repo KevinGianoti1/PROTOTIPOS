@@ -2,10 +2,20 @@ const databaseService = require('./services/databaseService');
 const marciaAgentService = require('./services/marciaAgentService');
 const logger = require('./utils/logger');
 
-// Mock do logger para não poluir o terminal
+const fs = require('fs');
+const util = require('util');
+
+const logFile = fs.createWriteStream('test_results.log', { flags: 'w' });
+const logStdout = process.stdout;
+
+console.log = function (d) { //
+    logFile.write(util.format(d) + '\n');
+    logStdout.write(util.format(d) + '\n');
+};
+
 logger.info = console.log;
-logger.error = console.error;
-logger.warn = console.warn;
+logger.error = console.log;
+logger.warn = console.log;
 
 async function runTests() {
     console.log('🚀 INICIANDO TESTES AUTOMATIZADOS DE SESSÃO...\n');
