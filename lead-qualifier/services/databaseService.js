@@ -346,10 +346,67 @@ class DatabaseService {
         return { query, params };
     }
 
-    async getFilteredContacts(filters = {}) {
+    async getLeadsByFilter(filters = {}) {
         const { query: filterQuery, params } = this._buildFilterQuery(filters);
         const query = `SELECT * FROM contacts ${filterQuery} ORDER BY created_at DESC LIMIT 50`;
         return await this.all(query, params);
+    }
+
+    async getRecentLeads() {
+        return await this.all('SELECT * FROM contacts ORDER BY created_at DESC LIMIT 10');
+    }
+
+    async getDailyLeads(days = 7) {
+        let query;
+        if (this.isPostgres) {
+            query = `
+                SELECT 
+                    to_char(created_at, 'YYYY-MM-DD') as date,
+                    COUNT(*) as count
+                FROM contacts
+                WHERE created_at >= NOW() - (INTERVAL '1 day' * $1)
+                GROUP BY date
+                ORDER BY date ASC
+            `;
+        } else {
+            query = `
+                SELECT 
+                    strftime('%Y-%m-%d', created_at) as date,
+                    COUNT(*) as count
+                FROM contacts
+                WHERE created_at >= date('now', '-' || ? || ' days')
+                GROUP BY date
+                ORDER BY date ASC
+            `;
+        }
+        return await this.all(query, [days]);
+    }
+
+    async getDashboardStats(filters = {}) {
+        const { query: filterQuery, params } = this._buildFilterQuery(filters);
+
+        const total = await this.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery}`, params);
+        const qualified = await this.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery} AND stage = 'completed'`, params);
+        const disqualified = await this.get(`SELECT COUNT(*) as count FROM contacts ${filterQuery} AND stage = 'disqualified'`, params);
+
+        const byOrigin = await this.all(`
+            SELECT origin as name, COUNT(*) as count 
+            FROM contacts 
+            ${filterQuery} AND origin IS NOT NULL 
+            GROUP BY origin
+        `, params);
+
+        const totalCount = parseInt(total.count) || 0;
+        const qualifiedCount = parseInt(qualified.count) || 0;
+        const conversionRate = totalCount > 0 ? ((qualifiedCount / totalCount) * 100).toFixed(1) : 0;
+
+        return {
+            total: totalCount,
+            qualified: qualifiedCount,
+            disqualified: parseInt(disqualified.count) || 0,
+            conversionRate,
+            byOrigin: byOrigin.map(o => ({ name: o.name, count: parseInt(o.count) }))
+        };
     }
 
     async getUniqueOrigins() {
