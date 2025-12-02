@@ -71,7 +71,20 @@ class MarciaAgentService {
             // Recupera ou cria contato no DB
             let contact = await this.databaseService.getContact(phoneNumber);
             if (!contact) {
-                contact = await this.databaseService.createContact(phoneNumber, { ready: false });
+                const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                contact = await this.databaseService.createContact(phoneNumber, {
+                    ready: false,
+                    current_conversation_id: conversationId
+                });
+            }
+
+            // Se não tem conversation_id (contatos antigos), criar um
+            if (!contact.current_conversation_id) {
+                const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                await this.databaseService.updateContact(phoneNumber, {
+                    current_conversation_id: conversationId
+                });
+                contact.current_conversation_id = conversationId;
             }
 
             // Verifica timeout de conversa (24 horas)
@@ -81,15 +94,32 @@ class MarciaAgentService {
 
                 if (hoursSinceLastMessage > 24) {
                     auditLogger.log({ type: 'conversation_timeout', phoneNumber, hoursSinceLastMessage });
-                    // Reseta conversa
+
+                    // Gerar novo ID de conversa (Nova sessão)
+                    const newConversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+                    // Reseta conversa E inicia nova sessão
                     await this.databaseService.updateContact(phoneNumber, {
+                        name: contact.name, // Preserva o nome
+                        current_conversation_id: newConversationId, // Nova sessão
                         data_cache: {},
                         stage: 'new',
                         cnpj_attempts: 0,
-                        cnpj_confirmed: false
+                        cnpj_confirmed: false,
+                        origin: null, // Limpa origem para coletar novamente
+                        source: null,
+                        campaign: null,
+                        ultima_interacao: new Date().toISOString()
                     });
+
                     contact = await this.databaseService.getContact(phoneNumber);
-                    return 'Oi! Faz um tempo que não conversamos. Vamos começar de novo? 😊';
+
+                    // Cumprimentar pelo nome se conhecido
+                    const greeting = contact.name
+                        ? `Oi ${contact.name}! Faz um tempo que não conversamos. Vamos começar de novo? 😊`
+                        : 'Oi! Faz um tempo que não conversamos. Vamos começar de novo? 😊';
+
+                    return greeting;
                 }
             }
 
@@ -109,9 +139,9 @@ class MarciaAgentService {
             }
 
             // Salva mensagem do usuário
-            await this.databaseService.addMessage(phoneNumber, 'user', message);
-            // Histórico para o prompt
-            const history = await this.databaseService.getHistory(phoneNumber);
+            await this.databaseService.addMessage(phoneNumber, 'user', message, contact.current_conversation_id);
+            // Histórico para o prompt (apenas da sessão atual)
+            const history = await this.databaseService.getHistory(phoneNumber, contact.current_conversation_id);
 
             logger.info(`📜 Histórico recuperado para ${phoneNumber}: ${history.length} mensagens`);
             if (history.length > 0) {
@@ -180,7 +210,7 @@ class MarciaAgentService {
             });
             const assistantMessage = completion.choices[0].message.content;
             // Salva resposta
-            await this.databaseService.addMessage(phoneNumber, 'assistant', assistantMessage);
+            await this.databaseService.addMessage(phoneNumber, 'assistant', assistantMessage, contact.current_conversation_id);
 
             // Extrai dados da resposta da IA
             const extractedData = this.extractDataFromResponse(assistantMessage);
@@ -342,7 +372,7 @@ class MarciaAgentService {
                     nome: data.name || 'Não informado',
                     telefone: formattedPhone,
                     email: data.email || '',
-                    origem: data.origin || 'WhatsApp'
+                    origem: data.origin || 'Origem Desconhecida'
                 },
                 empresa: {
                     ...empresaData,
@@ -605,6 +635,10 @@ Pergunte naturalmente:
 **IMPORTANTE**: Quando o cliente responder, CONFIRME a origem que você entendeu:
 - Se ele disser "insta", "ig", "anúncio" → Responda: "Ah legal, veio pelo **Instagram** então! 🚀"
 - Se disser "site", "google", "pesquisa" → Responda: "Ah legal, encontrou a gente pelo **Site**! 🚀"
+- Se disser "indicação", "amigo me falou" → Responda: "Ah legal, foi por **Indicação**! 🚀"
+
+⚠️ **NUNCA assuma "WhatsApp" como origem.** WhatsApp é o CANAL de comunicação, não a origem.
+A origem é ONDE o cliente descobriu a Maxi Force (Instagram, Site, Indicação, etc.)
 
 Isso garante que você e o cliente estão alinhados sobre a origem correta.  
 

@@ -126,6 +126,10 @@ class DatabaseService {
             await this.db.exec("ALTER TABLE contacts ADD COLUMN blocked_until TEXT").catch(() => { });
             await this.db.exec("ALTER TABLE contacts ADD COLUMN cnpj_confirmed BOOLEAN DEFAULT 0").catch(() => { });
 
+            // Sistema de Sessões de Conversa
+            await this.db.exec("ALTER TABLE contacts ADD COLUMN current_conversation_id TEXT").catch(() => { });
+            await this.db.exec("ALTER TABLE messages ADD COLUMN conversation_id TEXT").catch(() => { });
+
             logger.info('✅ Migração de colunas concluída');
         } catch (error) {
             logger.error('Erro na migração:', error);
@@ -182,18 +186,27 @@ class DatabaseService {
 
     // --- Métodos de Mensagem ---
 
-    async addMessage(phone, role, content) {
+    async addMessage(phone, role, content, conversationId = null) {
         await this.db.run(
-            'INSERT INTO messages (phone, role, content) VALUES (?, ?, ?)',
-            [phone, role, content]
+            'INSERT INTO messages (phone, conversation_id, role, content) VALUES (?, ?, ?, ?)',
+            [phone, conversationId, role, content]
         );
     }
 
-    async getHistory(phone, limit = 50) {
-        return await this.db.all(
-            'SELECT role, content FROM messages WHERE phone = ? ORDER BY created_at ASC LIMIT ?',
-            [phone, limit]
-        );
+    async getHistory(phone, conversationId = null, limit = 50) {
+        if (conversationId) {
+            // Filtra pela sessão atual
+            return await this.db.all(
+                'SELECT role, content FROM messages WHERE phone = ? AND conversation_id = ? ORDER BY created_at ASC LIMIT ?',
+                [phone, conversationId, limit]
+            );
+        } else {
+            // Fallback para compatibilidade (retorna tudo)
+            return await this.db.all(
+                'SELECT role, content FROM messages WHERE phone = ? ORDER BY created_at ASC LIMIT ?',
+                [phone, limit]
+            );
+        }
     }
 
     // --- Helper para Filtros ---
@@ -510,6 +523,25 @@ class DatabaseService {
             [score, temperatura, new Date().toISOString(), phone]
         );
     }
+
+    // --- Métodos para Análise de Histórico Completo ---
+
+    async getFullHistory(phone) {
+        // Retorna TODAS as mensagens, agrupadas por conversation_id
+        return await this.db.all(
+            'SELECT conversation_id, role, content, created_at FROM messages WHERE phone = ? ORDER BY created_at ASC',
+            [phone]
+        );
+    }
+
+    async getConversations(phone) {
+        // Lista todas as sessões de conversa
+        return await this.db.all(
+            'SELECT DISTINCT conversation_id, MIN(created_at) as started_at, MAX(created_at) as last_message FROM messages WHERE phone = ? GROUP BY conversation_id ORDER BY started_at DESC',
+            [phone]
+        );
+    }
+
     async clearAllContacts() {
         try {
             await this.db.run('DELETE FROM contacts');
