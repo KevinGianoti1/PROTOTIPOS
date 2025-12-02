@@ -1,0 +1,27 @@
+services:
+  # Servidor Node.js (Márcia + Dashboard)
+  - type: web
+    name: marcia-lead-qualifier
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    
+    # Variáveis de ambiente
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: OPENAI_API_KEY
+        sync: false # Configure manualmente no painel
+      - key: RD_STATION_API_TOKEN
+        sync: false # Configure manualmente no painel
+    
+    # Volume persistente para SQLite
+    disk:
+      name: data
+      mountPath: /opt/render/project/src
+      sizeGB: 1
