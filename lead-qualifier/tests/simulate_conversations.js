@@ -82,6 +82,25 @@ async function runSimulation() {
                 "Pra ontem", // Prazo
                 "Sim" // Confirmação
             ]
+        },
+        {
+            name: "Cenário 5: Usuário Distraído (Teste de Foco)",
+            phone: "5511999990005",
+            messages: [
+                "Oi gata",
+                "08.054.886/0001-68",
+                "E aí, o que você acha do Palmeiras?", // Distração 1
+                "Sou o Carlos",
+                "11999990005",
+                "Vai chover hoje?", // Distração 2
+                "carlos@teste.com",
+                "Lojista",
+                "Insta",
+                "Serras",
+                "10",
+                "Urgente",
+                "Sim"
+            ]
         }
     ];
 
