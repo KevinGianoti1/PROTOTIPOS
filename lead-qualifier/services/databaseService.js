@@ -410,12 +410,12 @@ class DatabaseService {
     }
 
     async getUniqueOrigins() {
-        const result = await this.all('SELECT DISTINCT origin FROM contacts WHERE origin IS NOT NULL AND origin != "" ORDER BY origin ASC');
+        const result = await this.all("SELECT DISTINCT origin FROM contacts WHERE origin IS NOT NULL AND origin != '' ORDER BY origin ASC");
         return result.map(r => r.origin);
     }
 
     async getUniqueSources() {
-        const result = await this.all('SELECT DISTINCT source FROM contacts WHERE source IS NOT NULL AND source != "" ORDER BY source ASC');
+        const result = await this.all("SELECT DISTINCT source FROM contacts WHERE source IS NOT NULL AND source != '' ORDER BY source ASC");
         return result.map(r => r.source);
     }
 
