@@ -10,6 +10,8 @@ let geoChart = null;
 document.addEventListener('DOMContentLoaded', () => {
     loadOrigins();
     loadSources();
+    loadCampaigns();
+    setDefaultDateRange();
     updateDashboard();
 });
 
@@ -45,6 +47,41 @@ async function loadSources() {
     } catch (e) {
         console.error('Erro ao carregar fontes:', e);
     }
+}
+
+async function loadCampaigns() {
+    try {
+        const res = await fetch('/api/dashboard/campaigns');
+        const data = await res.json();
+        const select = document.getElementById('campaignSelect');
+        select.innerHTML = '<option value="">Todas</option>';
+        data.campaigns.forEach(camp => {
+            const opt = document.createElement('option');
+            opt.value = camp;
+            opt.textContent = camp;
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Erro ao carregar campanhas:', e);
+    }
+}
+
+function setDefaultDateRange() {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30); // Últimos 30 dias
+
+    document.getElementById('endDate').valueAsDate = endDate;
+    document.getElementById('startDate').valueAsDate = startDate;
+}
+
+function clearFilters() {
+    document.getElementById('originSelect').value = '';
+    document.getElementById('sourceSelect').value = '';
+    document.getElementById('campaignSelect').value = '';
+    document.getElementById('stageSelect').value = '';
+    setDefaultDateRange();
+    updateDashboard();
 }
 
 async function updateDashboard(filters = {}) {
@@ -378,21 +415,9 @@ async function updateRecentLeads(filters = {}) {
 
 async function applyFilters(overrides = {}) {
     const origin = overrides.origin || document.getElementById('originSelect').value;
-    // Determine linked source and campaign based on origin
-    let source = '';
-    let campaign = '';
-    if (origin === 'Site') {
-        source = 'Site';
-        campaign = 'Google ADS';
-    } else if (origin === 'Instagram') {
-        source = 'Redes Sociais';
-        campaign = 'Tráfego Pago';
-    } else {
-        source = overrides.source || document.getElementById('sourceSelect').value;
-        campaign = overrides.campaign || document.getElementById('campaignSelect').value;
-    }
+    const source = overrides.source || document.getElementById('sourceSelect').value;
+    const campaign = overrides.campaign || document.getElementById('campaignSelect').value;
     const stage = overrides.stage || document.getElementById('stageSelect').value;
-    // Date range
     const startDate = overrides.startDate || document.getElementById('startDate').value;
     const endDate = overrides.endDate || document.getElementById('endDate').value;
 

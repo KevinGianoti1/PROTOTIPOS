@@ -175,6 +175,15 @@ header {
     background: #e66000;
 }
 
+.btn-filter.btn-secondary {
+    background: var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-filter.btn-secondary:hover {
+    background: #3a3a40;
+}
+
 /* Temperature Section */
 .temperature-section {
     margin-bottom: 2rem;

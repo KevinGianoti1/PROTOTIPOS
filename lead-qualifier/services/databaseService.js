@@ -419,6 +419,11 @@ class DatabaseService {
         return result.map(r => r.source);
     }
 
+    async getUniqueCampaigns() {
+        const result = await this.all("SELECT DISTINCT campaign FROM contacts WHERE campaign IS NOT NULL AND campaign != '' ORDER BY campaign ASC");
+        return result.map(r => r.campaign);
+    }
+
     // --- Métodos Avançados de Analytics (Fase 1) ---
 
     async getAdvancedStats(filters = {}) {

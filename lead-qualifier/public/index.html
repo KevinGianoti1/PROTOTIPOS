@@ -66,8 +66,7 @@
                     <label for="campaignSelect">Campanha</label>
                     <select id="campaignSelect">
                         <option value="">Todas</option>
-                        <option value="Google ADS">Google ADS</option>
-                        <option value="Tráfego Pago">Tráfego Pago</option>
+                        <!-- Populated dynamically via JavaScript -->
                     </select>
                 </div>
                 <div class="filter-group">
@@ -89,6 +88,7 @@
                     <input type="date" id="endDate" class="date-input">
                 </div>
                 <button class="btn-filter" onclick="applyFilters()">Aplicar Filtros</button>
+                <button class="btn-filter btn-secondary" onclick="clearFilters()">Limpar Filtros</button>
             </div>
         </section>
 

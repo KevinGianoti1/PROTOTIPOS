@@ -134,6 +134,17 @@ app.get('/api/dashboard/sources', async (req, res) => {
     }
 });
 
+// Unique campaigns for filter dropdown
+app.get('/api/dashboard/campaigns', async (req, res) => {
+    try {
+        const campaigns = await databaseService.getUniqueCampaigns();
+        res.json({ campaigns });
+    } catch (error) {
+        logger.error('Erro ao buscar campanhas únicas:', error);
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
 // Filtered leads endpoint – accepts query params origin, source, campaign, stage
 app.get('/api/dashboard/filter', async (req, res) => {
     try {
