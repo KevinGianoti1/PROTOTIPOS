@@ -170,9 +170,9 @@ class RDStationService {
         try {
             const payload = {
                 contact: {
-                    name: lead.nome,
-                    phones: [{ phone: lead.telefone }],
-                    emails: [{ email: lead.email || `${lead.nome.replace(/\s+/g, '.').toLowerCase()}@exemplo.com` }] // Email fictício se não houver
+                    name: lead.name,
+                    phones: [{ phone: lead.phone }],
+                    emails: [{ email: lead.email || `${lead.name.replace(/\s+/g, '.').toLowerCase()}@exemplo.com` }] // Email fictício se não houver
                 }
             };
 
@@ -216,12 +216,12 @@ class RDStationService {
                 logger.info('Organização encontrada, vinculando...', { id: organizationId });
             }
 
-            logger.info('Criando contato...', { nome: lead.nome });
+            logger.info('Criando contato...', { nome: lead.name });
             const contactId = await this.createContact(lead);
 
             // Determina Source e Campaign baseado na origem
             let dealSourceId, campaignId;
-            const origem = lead.origem ? lead.origem.toLowerCase() : '';
+            const origem = lead.origin ? lead.origin.toLowerCase() : '';
 
             if (origem.includes('instagram') || origem.includes('insta')) {
                 dealSourceId = '63d81a9a732aa3001738fd73'; // Redes Sociais
@@ -235,7 +235,7 @@ class RDStationService {
             // PASSO 1: Criar o deal SEM vínculos (só campos básicos)
             const dealPayload = {
                 deal: {
-                    name: `${lead.origem} - ${empresa.razaoSocial} - ${empresa.cnpjFormatado}`,
+                    name: `${lead.origin || 'Origem Desconhecida'} - ${empresa.razaoSocial} - ${empresa.cnpjFormatado}`,
                     deal_pipeline_id: '63d81825906fa10010e05051',
                     deal_stage_id: '6478a01a95b902000dc981ec',
                     user_id: '63d3f64aa6528000185e5ddd',
@@ -383,7 +383,7 @@ CEP: ${empresa.cep}
 
 📞 CONTATO:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Telefone Lead: ${lead.telefone}
+• Telefone Lead: ${lead.phone}
 • Email: ${empresa.email || 'Não informado'}
 • DDD: ${empresa.ddd || 'Não informado'}
 
@@ -403,7 +403,7 @@ ${validacao.cnaeMatch ? `CNAE Match: ${validacao.cnaeMatch.codigo} - ${validacao
 ${conversationSummary}
 📥 ORIGEM DO LEAD:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Fonte: ${lead.origem}
+Fonte: ${lead.origin || 'Não informado'}
 Data: ${new Date().toLocaleString('pt-BR')}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

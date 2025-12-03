@@ -367,10 +367,10 @@ class MarciaAgentService {
 
             const leadData = {
                 lead: {
-                    nome: data.name || 'Não informado',
-                    telefone: formattedPhone,
+                    name: data.name || 'Não informado',
+                    phone: formattedPhone,
                     email: data.email || '',
-                    origem: data.origin || 'Origem Desconhecida'
+                    origin: data.origin || 'Origem Desconhecida'
                 },
                 empresa: {
                     ...empresaData,
