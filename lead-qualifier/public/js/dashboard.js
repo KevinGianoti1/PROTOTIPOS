@@ -81,11 +81,11 @@ async function updateAdvancedStats(filters = {}) {
         const res = await fetch(`/api/dashboard/advanced-stats?${params}`);
         const data = await res.json();
 
-        // Update KPIs
-        document.getElementById('kpi-avg-time').textContent = `${data.avgQualificationTime}h`;
-        document.getElementById('kpi-response-rate').textContent = `${data.responseRate}%`;
-        document.getElementById('kpi-avg-ticket').textContent = `R$ ${data.avgTicket}`;
-        document.getElementById('kpi-catalogs').textContent = data.catalogsSent;
+        // Update KPIs with fallback values
+        document.getElementById('kpi-avg-time').textContent = `${data.avgQualificationTime || 0}h`;
+        document.getElementById('kpi-response-rate').textContent = `${data.responseRate || 0}%`;
+        document.getElementById('kpi-avg-ticket').textContent = `R$ ${data.avgTicket || 0}`;
+        document.getElementById('kpi-catalogs').textContent = data.catalogsSent || 0;
 
         // Update temperature distribution
         const tempData = data.byTemperature;
