@@ -473,9 +473,9 @@ class DatabaseService {
                 name: t.temperatura || 'Não classificado',
                 count: parseInt(t.count)
             })),
-            avgTicket: avgTicket.avg ? parseFloat(avgTicket.avg).toFixed(2) : 0,
+            avgTicket: (avgTicket && avgTicket.avg) ? parseFloat(avgTicket.avg).toFixed(2) : 0,
             responseRate: responseRate,
-            avgQualificationTime: avgQualificationTime.avg_hours ? parseFloat(avgQualificationTime.avg_hours).toFixed(1) : 0,
+            avgQualificationTime: (avgQualificationTime && avgQualificationTime.avg_hours) ? parseFloat(avgQualificationTime.avg_hours).toFixed(1) : 0,
             catalogsSent: parseInt(catalogsSent.count) || 0
         };
     }
