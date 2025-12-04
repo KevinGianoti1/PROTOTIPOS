@@ -17,7 +17,8 @@ class CNPJService {
      * @returns {string} - CNPJ apenas com números
      */
     cleanCNPJ(cnpj) {
-        return cnpj.replace(/\D/g, '');
+        if (!cnpj) return '';
+        return String(cnpj).replace(/\D/g, '');
     }
 
     /**
