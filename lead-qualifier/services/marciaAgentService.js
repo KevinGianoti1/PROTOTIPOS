@@ -412,6 +412,11 @@ class MarciaAgentService {
             });
         } catch (error) {
             logger.error('❌ Erro ao processar lead completo:', error);
+            try {
+                await this.databaseService.addMessage(phoneNumber, 'assistant', 'Tive um probleminha técnico para finalizar seu cadastro. 😔 Vou pedir para um humano verificar!', contact.current_conversation_id);
+            } catch (msgError) {
+                logger.error('Erro ao enviar mensagem de erro:', msgError);
+            }
         }
     }
 
