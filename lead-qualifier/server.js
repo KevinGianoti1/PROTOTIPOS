@@ -17,6 +17,18 @@ const logger = require('./utils/logger');
 
 const app = express();
 const server = http.createServer(app);
+
+// Prevent crash on unhandled rejections (common with Puppeteer protocol errors)
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    // Não sai do processo, apenas loga. Isso evita que o erro de protocolo do Puppeteer derrube o servidor.
+});
+
+process.on('uncaughtException', (error) => {
+    logger.error('❌ Uncaught Exception:', error);
+    // Opcional: reiniciar serviços críticos se necessário
+});
+
 const io = new Server(server, {
     cors: {
         origin: "*",
