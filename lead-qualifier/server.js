@@ -347,7 +347,7 @@ app.get('/api/whatsapp/qr', (req, res) => {
     whatsappService.setQRCallback(sendQR);
 
     // Se não estiver conectado, força geração de novo QR
-    if (!whatsappService.isConnected) {
+    if (!whatsappService.isConnected()) {
         whatsappService.initialize().catch(console.error);
     }
 
