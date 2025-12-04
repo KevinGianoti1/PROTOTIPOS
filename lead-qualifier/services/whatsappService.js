@@ -44,13 +44,22 @@ class WhatsAppService {
      * Inicializa o cliente WhatsApp
      */
     async initialize() {
+        if (this.isInitializing) {
+            logger.warn('⚠️ Inicialização já em andamento, ignorando chamada duplicada.');
+            return;
+        }
+
+        this.isInitializing = true;
+
         try {
             if (this.client) {
                 logger.info('⚠️ Cliente anterior detectado. Destruindo para reiniciar...');
                 try {
                     await this.client.destroy();
+                    // Pequeno delay para garantir liberação de arquivos no Windows
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 } catch (e) {
-                    logger.warn('Erro ao destruir cliente anterior:', e);
+                    logger.warn('Erro ao destruir cliente anterior (ignorando para prosseguir):', e.message);
                 }
                 this.client = null;
                 this.isReady = false;
@@ -136,6 +145,8 @@ class WhatsAppService {
         } catch (error) {
             logger.error('❌ Erro ao inicializar WhatsApp:', error);
             throw error;
+        } finally {
+            this.isInitializing = false;
         }
     }
 
@@ -464,6 +475,39 @@ class WhatsAppService {
     resetReconnectCounters() {
         this.reconnectAttempts = 0;
         this.isReconnecting = false;
+    }
+
+    /**
+     * Desconecta o cliente WhatsApp
+     */
+    async disconnect() {
+        if (this.client) {
+            logger.info('🔌 Desconectando WhatsApp...');
+
+            // Para reconexão automática
+            this.isReconnecting = true; // Impede que o evento 'disconnected' tente reconectar
+
+            try {
+                await this.client.logout();
+            } catch (e) {
+                logger.warn('Erro ao fazer logout (pode já estar desconectado):', e.message);
+            }
+
+            try {
+                await this.client.destroy();
+                // Pequeno delay para garantir liberação de arquivos
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (e) {
+                logger.warn('Erro ao destruir cliente:', e.message);
+            }
+
+            this.client = null;
+            this.isReady = false;
+            this.reconnectAttempts = 0;
+            this.isReconnecting = false; // Reseta flag
+
+            logger.info('✅ WhatsApp desconectado com sucesso');
+        }
     }
 }
 
