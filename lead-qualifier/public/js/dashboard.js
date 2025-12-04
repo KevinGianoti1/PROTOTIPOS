@@ -6,6 +6,7 @@ let scoreChart = null;
 let cnaeChart = null;
 let productChart = null;
 let geoChart = null;
+let socket = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadOrigins();
@@ -13,7 +14,98 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCampaigns();
     setDefaultDateRange();
     updateDashboard();
+    initWebSocket();
 });
+
+// WebSocket for real-time updates
+function initWebSocket() {
+    try {
+        socket = io();
+        socket.on('connect', () => console.log('📡 WebSocket conectado'));
+        socket.on('disconnect', () => console.log('📡 WebSocket desconectado'));
+
+        // Real-time updates
+        socket.on('lead:new', (data) => {
+            console.log('🆕 Novo lead recebido:', data);
+            updateDashboard();
+        });
+        socket.on('lead:updated', (data) => {
+            console.log('📝 Lead atualizado:', data);
+            updateDashboard();
+        });
+    } catch (e) {
+        console.warn('WebSocket não disponível:', e);
+    }
+}
+
+// CSV Export function
+function exportCSV() {
+    const params = new URLSearchParams();
+    const origin = document.getElementById('originSelect').value;
+    const source = document.getElementById('sourceSelect').value;
+    const campaign = document.getElementById('campaignSelect').value;
+    const stage = document.getElementById('stageSelect').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    if (origin) params.append('origin', origin);
+    if (source) params.append('source', source);
+    if (campaign) params.append('campaign', campaign);
+    if (stage) params.append('stage', stage);
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    window.location.href = `/api/export/leads?${params.toString()}`;
+}
+
+// View conversation history
+async function viewHistory(phone) {
+    try {
+        const res = await fetch(`/api/conversation/${phone}`);
+        const data = await res.json();
+
+        if (!data.success) {
+            alert('Erro ao carregar histórico');
+            return;
+        }
+
+        const modal = document.getElementById('history-modal');
+        const content = document.getElementById('history-content');
+
+        let html = '';
+        if (data.history.contact) {
+            html += `<div class="history-header">
+                <strong>${data.history.contact.name || 'Lead'}</strong>
+                <span class="badge-${(data.history.contact.temperature || '').toLowerCase()}">${data.history.contact.temperature || ''}</span>
+                <span>Score: ${data.history.contact.score || 0}</span>
+            </div>`;
+        }
+
+        html += '<div class="history-messages">';
+        if (data.history.messages && data.history.messages.length > 0) {
+            data.history.messages.forEach(msg => {
+                const isUser = msg.role === 'user';
+                html += `<div class="message ${isUser ? 'user' : 'assistant'}">
+                    <div class="message-content">${msg.content}</div>
+                    <div class="message-time">${msg.time}</div>
+                </div>`;
+            });
+        } else {
+            html += '<p style="text-align: center; color: #A8A8B3;">Nenhuma mensagem encontrada</p>';
+        }
+        html += '</div>';
+
+        content.innerHTML = html;
+        modal.style.display = 'block';
+    } catch (e) {
+        console.error('Erro ao carregar histórico:', e);
+        alert('Erro ao carregar histórico');
+    }
+}
+
+function closeHistoryModal() {
+    document.getElementById('history-modal').style.display = 'none';
+}
 
 async function loadOrigins() {
     try {
@@ -518,7 +610,7 @@ document.addEventListener('DOMContentLoaded', fetchWhatsAppStatus);
 function renderTable(leads) {
     const tbody = document.getElementById('leadsTableBody');
     if (!leads || leads.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Nenhum lead encontrado</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">Nenhum lead encontrado</td></tr>';
         return;
     }
 
@@ -532,6 +624,7 @@ function renderTable(leads) {
             <td>${formatTemperature(lead.temperatura)}</td>
             <td><span class="badge badge-${lead.stage}">${formatStage(lead.stage)}</span></td>
             <td>${formatDateTime(lead.created_at)}</td>
+            <td><button class="btn-view-history" onclick="viewHistory('${lead.phone}')">💬</button></td>
         </tr>
     `).join('');
 }

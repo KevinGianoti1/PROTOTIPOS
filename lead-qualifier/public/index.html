@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +11,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=3">
+    <link rel="stylesheet" href="css/style.css?v=4">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 
 <body>
@@ -238,7 +242,10 @@
         <section class="card table-card">
             <div class="card-header">
                 <h2>Últimos Leads</h2>
-                <button class="btn-refresh" onclick="updateDashboard()">🔄</button>
+                <div>
+                    <button class="btn-filter" onclick="exportCSV()">📥 Exportar CSV</button>
+                    <button class="btn-refresh" onclick="updateDashboard()">🔄</button>
+                </div>
             </div>
             <div class="table-container">
                 <table id="leadsTable">
@@ -252,18 +259,29 @@
                             <th>Temp</th>
                             <th>Status</th>
                             <th>Data</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody id="leadsTableBody">
                         <tr>
-                            <td colspan="8" style="text-align: center;">Carregando...</td>
+                            <td colspan="9" style="text-align: center;">Carregando...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </section>
     </div>
-    <script src="js/dashboard.js?v=3"></script>
+
+    <!-- History Modal -->
+    <div id="history-modal" class="modal">
+        <div class="modal-content history-modal-content">
+            <span class="close" onclick="closeHistoryModal()">&times;</span>
+            <h2>Histórico de Conversa</h2>
+            <div id="history-content"></div>
+        </div>
+    </div>
+
+    <script src="js/dashboard.js?v=4"></script>
 </body>
 
 </html>

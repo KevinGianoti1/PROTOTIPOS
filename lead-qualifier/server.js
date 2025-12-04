@@ -4,6 +4,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const QRCode = require('qrcode');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const cnpjService = require('./services/cnpjService');
 const validationService = require('./services/validationService');
@@ -14,7 +16,17 @@ const knowledgeBaseService = require('./services/knowledgeBaseService');
 const logger = require('./utils/logger');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 const PORT = process.env.PORT || 3000;
+
+// Make io available globally for real-time updates
+global.io = io;
 
 // Middlewares
 app.use(cors());
@@ -328,6 +340,66 @@ app.post('/api/whatsapp/disconnect', async (req, res) => {
     }
 });
 
+// --- CSV Export Endpoint ---
+app.get('/api/export/leads', async (req, res) => {
+    try {
+        const filters = {
+            origin: req.query.origin || undefined,
+            source: req.query.source || undefined,
+            campaign: req.query.campaign || undefined,
+            stage: req.query.stage || undefined,
+            start_date: req.query.start_date || undefined,
+            end_date: req.query.end_date || undefined
+        };
+        const leads = await databaseService.getLeadsByFilter(filters);
+
+        // Generate CSV
+        const headers = ['Nome', 'Telefone', 'Email', 'CNPJ', 'Cidade', 'UF', 'CNAE', 'Score', 'Temperatura', 'Status', 'Origem', 'Fonte', 'Campanha', 'Data'];
+        const csvRows = [headers.join(',')];
+
+        leads.forEach(lead => {
+            const row = [
+                `"${(lead.name || '').replace(/"/g, '""')}"`,
+                lead.phone || '',
+                lead.email || '',
+                lead.cnpj || '',
+                `"${(lead.city || '').replace(/"/g, '""')}"`,
+                lead.state || '',
+                lead.cnae_code || '',
+                lead.lead_score || '',
+                lead.temperature || '',
+                lead.stage || '',
+                lead.origin || '',
+                lead.source || '',
+                `"${(lead.campaign || '').replace(/"/g, '""')}"`,
+                lead.created_at ? new Date(lead.created_at).toLocaleDateString('pt-BR') : ''
+            ];
+            csvRows.push(row.join(','));
+        });
+
+        const csv = csvRows.join('\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=leads_${new Date().toISOString().split('T')[0]}.csv`);
+        res.send('\uFEFF' + csv); // BOM for Excel UTF-8 compatibility
+    } catch (error) {
+        logger.error('Erro ao exportar leads:', error);
+        res.status(500).json({ error: 'Erro ao exportar' });
+    }
+});
+
+// --- Conversation History Endpoint ---
+app.get('/api/conversation/:phone', async (req, res) => {
+    try {
+        const phone = req.params.phone;
+        const history = await databaseService.getConversationHistory(phone);
+        res.json({ success: true, history });
+    } catch (error) {
+        logger.error('Erro ao buscar histórico:', error);
+        res.status(500).json({ error: 'Erro ao buscar histórico' });
+    }
+});
+
 // QR Code Stream (SSE)
 app.get('/api/whatsapp/qr', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -356,11 +428,21 @@ app.get('/api/whatsapp/qr', (req, res) => {
     });
 });
 
+// WebSocket connection handler
+io.on('connection', (socket) => {
+    logger.info('📡 Cliente conectado ao WebSocket');
+
+    socket.on('disconnect', () => {
+        logger.info('📡 Cliente desconectado do WebSocket');
+    });
+});
+
 // Start server and initialize services
-app.listen(PORT, async () => {
+server.listen(PORT, async () => {
     logger.info(`🚀 Servidor rodando na porta ${PORT}`);
     logger.info(`📊 Dashboard: http://localhost:${PORT}`);
     logger.info(`🔌 Webhook endpoint: http://localhost:${PORT}/webhook/lead`);
+    logger.info(`📡 WebSocket: ws://localhost:${PORT}`);
 
     try {
         // 1. Initialize Database

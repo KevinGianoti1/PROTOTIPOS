@@ -181,6 +181,13 @@ class WhatsAppService {
             // Sanitiza o número (remove sufixos como @c.us, @lid e mantém apenas dígitos)
             const phoneNumber = message.from.replace(/\D/g, '');
 
+            // Rate limiting check
+            if (this.isRateLimited(phoneNumber)) {
+                logger.warn(`🚫 Rate limit: Contato ${phoneNumber} bloqueado temporariamente`);
+                return;
+            }
+            this.trackMessageRate(phoneNumber);
+
             // Inicializa buffer para este contato se não existir
             if (!this.messageBuffers[phoneNumber]) {
                 this.messageBuffers[phoneNumber] = [];
@@ -400,6 +407,63 @@ class WhatsAppService {
      */
     isConnected() {
         return this.isReady;
+    }
+
+    /**
+     * Verifica se um contato está rate limited
+     * @param {string} phone - Número do telefone
+     * @returns {boolean}
+     */
+    isRateLimited(phone) {
+        const now = Date.now();
+
+        // Check if blocked
+        if (this.blockedContacts[phone] && now < this.blockedContacts[phone]) {
+            return true;
+        } else if (this.blockedContacts[phone]) {
+            delete this.blockedContacts[phone]; // Unblock
+        }
+
+        return false;
+    }
+
+    /**
+     * Registra mensagem para rate limiting
+     * @param {string} phone - Número do telefone
+     */
+    trackMessageRate(phone) {
+        const now = Date.now();
+        const oneMinuteAgo = now - 60000;
+
+        if (!this.messageRates[phone]) {
+            this.messageRates[phone] = { count: 1, firstMessageTime: now };
+            return;
+        }
+
+        const rate = this.messageRates[phone];
+
+        // Reset if window expired
+        if (rate.firstMessageTime < oneMinuteAgo) {
+            this.messageRates[phone] = { count: 1, firstMessageTime: now };
+            return;
+        }
+
+        rate.count++;
+
+        // Block if exceeded
+        if (rate.count > this.maxMessagesPerMinute) {
+            this.blockedContacts[phone] = now + 300000; // Block for 5 minutes
+            logger.warn(`🚫 Contato ${phone} bloqueado por 5 minutos (spam detectado)`);
+            delete this.messageRates[phone];
+        }
+    }
+
+    /**
+     * Reseta contadores de reconexão (chamado após conexão bem-sucedida)
+     */
+    resetReconnectCounters() {
+        this.reconnectAttempts = 0;
+        this.isReconnecting = false;
     }
 }
 

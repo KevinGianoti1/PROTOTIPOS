@@ -583,6 +583,34 @@ class DatabaseService {
         );
     }
 
+    /**
+     * Retorna histórico formatado para o painel de conversas
+     * @param {string} phone - Número do telefone
+     * @returns {Object} Histórico com contact info e messages
+     */
+    async getConversationHistory(phone) {
+        const contact = await this.getContact(phone);
+        const messages = await this.all(
+            'SELECT role, content, created_at FROM messages WHERE phone = ? ORDER BY created_at ASC',
+            [phone]
+        );
+
+        return {
+            contact: contact ? {
+                name: contact.name,
+                phone: contact.phone,
+                stage: contact.stage,
+                temperature: contact.temperatura,
+                score: contact.lead_score
+            } : null,
+            messages: messages.map(m => ({
+                role: m.role,
+                content: m.content,
+                time: new Date(m.created_at).toLocaleString('pt-BR')
+            }))
+        };
+    }
+
     async clearAllContacts() {
         try {
             await this.run('DELETE FROM contacts');
