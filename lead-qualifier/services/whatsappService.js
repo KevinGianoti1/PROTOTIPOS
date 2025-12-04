@@ -19,6 +19,17 @@ class WhatsAppService {
         this.isReady = false;
         this.messageTimers = {}; // Para debouncing de mensagens
         this.messageBuffers = {}; // Buffer de mensagens recentes por contato (sliding window)
+
+        // Reconnection settings
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 5000; // Start with 5 seconds
+        this.isReconnecting = false;
+
+        // Rate limiting settings
+        this.messageRates = {}; // { phone: { count, firstMessageTime } }
+        this.maxMessagesPerMinute = 10;
+        this.blockedContacts = {}; // { phone: unblockTime }
     }
 
     /**
@@ -91,9 +102,32 @@ class WhatsAppService {
             });
 
             // Evento: Desconectado
-            this.client.on('disconnected', (reason) => {
+            this.client.on('disconnected', async (reason) => {
                 this.isReady = false;
                 logger.warn('⚠️ WhatsApp desconectado:', reason);
+
+                // Auto-reconnect logic
+                if (!this.isReconnecting && this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.isReconnecting = true;
+                    this.reconnectAttempts++;
+                    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
+
+                    logger.info(`🔄 Tentativa de reconexão ${this.reconnectAttempts}/${this.maxReconnectAttempts} em ${delay / 1000}s...`);
+
+                    setTimeout(async () => {
+                        try {
+                            await this.initialize();
+                            this.reconnectAttempts = 0; // Reset on success
+                            logger.info('✅ Reconexão bem-sucedida!');
+                        } catch (err) {
+                            logger.error('❌ Falha na reconexão:', err.message);
+                        } finally {
+                            this.isReconnecting = false;
+                        }
+                    }, delay);
+                } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                    logger.error('❌ Máximo de tentativas de reconexão atingido. Reinicie manualmente.');
+                }
             });
 
             // Inicializa o cliente
