@@ -43,9 +43,133 @@ class WhatsAppService {
     /**
      * Inicializa o cliente WhatsApp
      */
-    /**
-     * Desconecta o WhatsApp
-     */
+    async initialize() {
+        if (this.isInitializing) {
+            logger.warn('⚠️ Inicialização já em andamento, ignorando chamada duplicada.');
+            return;
+        }
+
+        // Se já estiver conectado e pronto, não faz nada
+        if (this.client && this.isReady) {
+            logger.info('✅ WhatsApp já está conectado e pronto.');
+            return;
+        }
+
+        this.isInitializing = true;
+
+        try {
+            if (this.client) {
+                logger.info('⚠️ Cliente anterior detectado. Destruindo para reiniciar...');
+                try {
+                    // Remove listeners para evitar efeitos colaterais durante destruição
+                    this.client.removeAllListeners();
+                    await this.client.destroy();
+                    // Pequeno delay para garantir liberação de arquivos no Windows
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } catch (e) {
+                    logger.warn('Erro ao destruir cliente anterior (ignorando):', e.message);
+                }
+                this.client = null;
+                this.isReady = false;
+            }
+
+            logger.info('🔄 Inicializando WhatsApp...');
+
+            this.client = new Client({
+                authStrategy: new LocalAuth({
+                    dataPath: './.wwebjs_auth'
+                }),
+                puppeteer: {
+                    headless: true,
+                    args: [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-accelerated-2d-canvas',
+                        '--no-first-run',
+                        '--no-zygote',
+                        '--disable-gpu'
+                    ]
+                }
+            });
+
+            // Evento: QR Code (para conectar pela primeira vez)
+            this.client.on('qr', (qr) => {
+                logger.info('📱 Escaneie o QR Code abaixo com o WhatsApp:');
+                qrcode.generate(qr, { small: true });
+                if (this.qrCallback) {
+                    this.qrCallback(qr);
+                }
+            });
+
+            // Evento: Pronto
+            this.client.on('ready', () => {
+                this.isReady = true;
+                this.reconnectAttempts = 0;
+                logger.info('🚀 WhatsApp conectado e pronto para receber mensagens!');
+                if (global.io) global.io.emit('whatsapp:status', { status: 'connected' });
+            });
+
+            // Evento: Autenticado
+            this.client.on('authenticated', () => {
+                logger.info('✅ WhatsApp autenticado com sucesso!');
+            });
+
+            // Evento: Falha na autenticação
+            this.client.on('auth_failure', (msg) => {
+                logger.error('❌ Falha na autenticação:', msg);
+                this.isReady = false;
+            });
+
+            // Evento: Mensagem recebida
+            this.client.on('message', async (message) => {
+                await this.handleMessage(message);
+            });
+
+            // Evento: Desconectado
+            this.client.on('disconnected', async (reason) => {
+                this.isReady = false;
+                logger.warn(`⚠️ WhatsApp desconectado: "${reason}"`);
+                if (global.io) global.io.emit('whatsapp:status', { status: 'disconnected' });
+
+                // Se for LOGOUT intencional (pelo celular ou app), não reconecta automaticamente imediatamente
+                // para evitar loop se a sessão estiver corrompida.
+                if (reason === 'LOGOUT' || reason === 'banned') {
+                    logger.warn('⛔ Desconexão crítica (LOGOUT/BAN). Limpando sessão e aguardando reinício manual ou delayed.');
+                }
+
+                // Auto-reconnect logic
+                if (!this.isReconnecting && this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.isReconnecting = true;
+                    this.reconnectAttempts++;
+                    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
+
+                    logger.info(`🔄 Tentativa de reconexão ${this.reconnectAttempts}/${this.maxReconnectAttempts} em ${delay / 1000}s...`);
+
+                    setTimeout(async () => {
+                        try {
+                            await this.initialize();
+                            // Nota: reconnectAttempts será resetado no evento 'ready'
+                        } catch (err) {
+                            logger.error('❌ Falha na reconexão:', err.message);
+                            this.isReconnecting = false; // Permite tentar de novo no próximo ciclo se falhar
+                        }
+                    }, delay);
+                } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                    logger.error('❌ Máximo de tentativas de reconexão atingido. Reinicie manualmente.');
+                }
+            });
+
+            // Inicializa o cliente
+            await this.client.initialize();
+
+        } catch (error) {
+            logger.error('❌ Erro ao inicializar WhatsApp:', error);
+            // Não relança o erro para não derrubar o servidor, apenas loga
+        } finally {
+            this.isInitializing = false;
+        }
+    }
     async disconnect() {
         if (this.client) {
             await this.client.destroy();
