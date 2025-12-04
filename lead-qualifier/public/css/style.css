@@ -459,3 +459,57 @@ tr:last-child td {
     max-width: 100%;
     border-radius: 8px;
 }
+
+/* WhatsApp Card Styles */
+.whatsapp-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.whatsapp-card h3 {
+    color: var(--text-primary);
+    font-size: 1rem;
+    margin: 0;
+}
+
+#whatsapp-status {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+#whatsapp-status.connected {
+    color: var(--success-color);
+}
+
+#whatsapp-number {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.btn-whatsapp {
+    background: #25D366;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.btn-whatsapp:hover {
+    background: #1da851;
+    transform: translateY(-1px);
+}
+
+.btn-whatsapp.disconnect {
+    background: var(--danger-color);
+}
+
+.btn-whatsapp.disconnect:hover {
+    background: #e04854;
+}
