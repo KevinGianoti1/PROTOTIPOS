@@ -63,10 +63,10 @@ class WhatsAppService {
                 try {
                     // Remove listeners para evitar efeitos colaterais durante destruição
                     this.client.removeAllListeners();
-                    await this.client.destroy();
+                    await this.client.destroy().catch(() => { });
                     // Aumentado delay para garantir liberação total de arquivos e processos
-                    logger.info('⏳ Aguardando 5 segundos para limpeza do processo...');
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    logger.info('⏳ Aguardando 3 segundos para limpeza do processo...');
+                    await new Promise(resolve => setTimeout(resolve, 3000));
                 } catch (e) {
                     logger.warn('Erro ao destruir cliente anterior (ignorando):', e.message);
                 }
@@ -79,6 +79,10 @@ class WhatsAppService {
             // ID único para debug de instância
             const clientId = Math.random().toString(36).substring(7);
             logger.info(`🆔 Iniciando Cliente ID: ${clientId}`);
+
+            // Flags para evitar processamento duplicado de eventos
+            let hasAuthenticated = false;
+            let hasConnected = false;
 
             this.client = new Client({
                 authStrategy: new LocalAuth({
@@ -93,6 +97,7 @@ class WhatsAppService {
                         '--disable-accelerated-2d-canvas',
                         '--no-first-run',
                         '--no-zygote',
+                        '--single-process',
                         '--disable-gpu'
                     ]
                 }
@@ -110,16 +115,27 @@ class WhatsAppService {
                 }
             });
 
-            // Evento: Pronto
+            // Evento: Pronto (usa flag para evitar duplicação)
             this.client.on('ready', () => {
+                if (hasConnected) {
+                    logger.warn(`[${clientId}] ⚠️ Evento ready duplicado ignorado`);
+                    return;
+                }
+                hasConnected = true;
                 this.isReady = true;
                 this.reconnectAttempts = 0;
+                this.isReconnecting = false;
                 logger.info(`[${clientId}] 🚀 WhatsApp conectado e pronto para receber mensagens!`);
                 if (global.io) global.io.emit('whatsapp:status', { status: 'connected' });
             });
 
-            // Evento: Autenticado
+            // Evento: Autenticado (usa flag para evitar duplicação)
             this.client.on('authenticated', () => {
+                if (hasAuthenticated) {
+                    logger.warn(`[${clientId}] ⚠️ Evento authenticated duplicado ignorado`);
+                    return;
+                }
+                hasAuthenticated = true;
                 logger.info(`[${clientId}] ✅ WhatsApp autenticado com sucesso!`);
             });
 
@@ -131,8 +147,11 @@ class WhatsAppService {
 
             // Evento: Mensagem recebida
             this.client.on('message', async (message) => {
-                logger.info(`[${clientId}] 📩 Mensagem recebida de ${message.from}`);
-                await this.handleMessage(message);
+                try {
+                    await this.handleMessage(message);
+                } catch (err) {
+                    logger.error(`[${clientId}] ❌ Erro ao processar mensagem:`, err.message);
+                }
             });
 
             // Evento: Desconectado
@@ -141,27 +160,28 @@ class WhatsAppService {
                 logger.warn(`[${clientId}] ⚠️ WhatsApp desconectado: "${reason}"`);
                 if (global.io) global.io.emit('whatsapp:status', { status: 'disconnected' });
 
-                // Se for LOGOUT intencional (pelo celular ou app), não reconecta automaticamente imediatamente
-                // para evitar loop se a sessão estiver corrompida.
+                // Se for LOGOUT, a sessão pode estar corrompida. NÃO reconecta automaticamente.
                 if (reason === 'LOGOUT' || reason === 'banned') {
-                    logger.warn(`[${clientId}] ⛔ Desconexão crítica (LOGOUT/BAN). Limpando sessão e aguardando reinício manual ou delayed.`);
+                    logger.warn(`[${clientId}] ⛔ Desconexão crítica (LOGOUT/BAN). Sessão pode estar corrompida.`);
+                    logger.warn(`[${clientId}] 💡 Execute clean_start.bat para limpar e reconectar.`);
+                    this.isReconnecting = true; // Impede reconnect automático
+                    return; // NÃO tenta reconectar automaticamente em caso de LOGOUT
                 }
 
-                // Auto-reconnect logic
+                // Auto-reconnect logic (apenas para desconexões normais, não LOGOUT)
                 if (!this.isReconnecting && this.reconnectAttempts < this.maxReconnectAttempts) {
                     this.isReconnecting = true;
                     this.reconnectAttempts++;
-                    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
+                    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
                     logger.info(`🔄 Tentativa de reconexão ${this.reconnectAttempts}/${this.maxReconnectAttempts} em ${delay / 1000}s...`);
 
                     setTimeout(async () => {
                         try {
                             await this.initialize();
-                            // Nota: reconnectAttempts será resetado no evento 'ready'
                         } catch (err) {
                             logger.error('❌ Falha na reconexão:', err.message);
-                            this.isReconnecting = false; // Permite tentar de novo no próximo ciclo se falhar
+                            this.isReconnecting = false;
                         }
                     }, delay);
                 } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
@@ -174,7 +194,6 @@ class WhatsAppService {
 
         } catch (error) {
             logger.error('❌ Erro ao inicializar WhatsApp:', error);
-            // Não relança o erro para não derrubar o servidor, apenas loga
         } finally {
             this.isInitializing = false;
         }
